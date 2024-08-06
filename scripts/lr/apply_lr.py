@@ -24,12 +24,10 @@ except NameError:
 sys.path.append(os.path.join(BASEPATH, '..', '..', 'src'))
 from mltier1 import MultiMLEstimator, parallel_process, get_sigma_all
 
-# LOAD CONFIG from ENV file
-# Save as .env
-#LEGACY_DATA_PATH=/disk02/jsm/Legacy_data-south-13h/Legacy
-#UNWISE_DATA_PATH=/disk02/jsm/Legacy_data-south-13h/unWISE
-#REGION=s13a
-load_dotenv(find_dotenv())
+region = sys.argv[1]
+envfile = region+'.env'
+
+load_dotenv(find_dotenv(envfile))
 COMBINED_DATA_PATH = os.getenv("COMBINED_DATA_PATH")
 PARAMS_PATH = os.getenv("PARAMS_PATH")
 THRESHOLD = os.getenv("THRESHOLD")
@@ -58,7 +56,7 @@ bin_list, centers, Q_0_colour, n_m, q_m = params
 print("Load optical catalogue")
 combined = Table.read(base_optical_catalogue)
 print("Load input catalogue")
-lofar_all = Table.read(input_catalogue)
+lofar = Table.read(input_catalogue)
 
 ## Get the coordinates
 coords_combined = SkyCoord(combined['RA'], 
