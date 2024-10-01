@@ -24,15 +24,16 @@ except NameError:
 sys.path.append(os.path.join(BASEPATH, '..', '..', 'src'))
 from mltier1 import MultiMLEstimator, parallel_process, get_sigma_all
 
+
 region = sys.argv[1]
 envfile = region+'.env'
 
 load_dotenv(find_dotenv(envfile))
-COMBINED_DATA_PATH = os.getenv("COMBINED_DATA_PATH")
-PARAMS_PATH = os.getenv("PARAMS_PATH")
+COMBINED_DATA_PATH = data_path + os.getenv("COMBINED_DATA_PATH")
+PARAMS_PATH = data_path + os.getenv("PARAMS_PATH")
 THRESHOLD = os.getenv("THRESHOLD")
-RADIO_CATALOGUE = os.getenv("RADIO_CATALOGUE")
-OUTPUT_RADIO_CATALOGUE = os.getenv("OUTPUT_RADIO_CATALOGUE")
+RADIO_CATALOGUE = data_path + os.getenv("RADIO_CATALOGUE")
+OUTPUT_RADIO_CATALOGUE = data_path + os.getenv("OUTPUT_CATALOGUE")
 
 # Default config parameters
 base_optical_catalogue = COMBINED_DATA_PATH
