@@ -23,6 +23,8 @@ import yaml
 from dotenv import load_dotenv, find_dotenv
 from IPython.display import clear_output
 
+dir = sys.argv[1]                               # Working directory to change to and run the code from
+os.chdir(dir)                                   # Move to working/data directory (should be bound to container)
 
 try:
     BASEPATH = os.path.dirname(os.path.realpath(__file__))
@@ -38,6 +40,9 @@ except NameError as e:
 data_path = os.path.join(ROOTPATH, "data")
 src_path = os.path.join(ROOTPATH, "src")
 config_path = os.path.join(ROOTPATH, "config")
+hp_path = os.path.join(data_path, "hp")
+
+#print(hp_path)
 
 sys.path.append(src_path)
 from mltier1 import (get_center, get_n_m, estimate_q_m, Field, SingleMLEstimator, MultiMLEstimator,
@@ -58,19 +63,20 @@ with open(os.path.join(config_path, "params.yml"), "r") as ymlfile:
     cfg_all = yaml.safe_load(ymlfile)
 
 load_dotenv(find_dotenv())
-REGION='n13a'
+REGION='hp333'
 #REGION = os.getenv("REGION")
 config = cfg_all[REGION]
 
 region_name = config["region_name"]
-radio_catalogue = os.path.join(data_path, config["radio_catalogue"])
-combined_catalogue = os.path.join(data_path, config["combined_catalogue"])
-dec_down = config["dec_down"]
-dec_up = config["dec_up"]
-ra_down = config["ra_down"]
-ra_up = config["ra_up"]
+#radio_catalogue = os.path.join(data_path, config["radio_catalogue"])
+#combined_catalogue = os.path.join(data_path, config["combined_catalogue"])
+radio_catalogue = os.path.join(hp_path, config["radio_catalogue"])
+combined_catalogue = os.path.join(hp_path, config["combined_catalogue"])
 max_major = config["max_major"]
 colour_limits_post = np.array(config["colour_limits_post"])
+
+#print(radio_catalogue)
+#print(combined_catalogue)
 
 # General configuration
 
@@ -81,10 +87,39 @@ idp = os.path.join(data_path, "idata", region_name)
 
 os.makedirs(idp, exist_ok=True)
 
+
+# Load data
+
+print('loading optical data')
+combined_all = Table.read(combined_catalogue)
+
+# We will start to use the updated catalogues that include the output of the LOFAR Galaxy Zoo work.
+
+print('loading radio data')
+lofar_all = Table.read(radio_catalogue)
+
+np.array(combined_all.colnames)
+
+np.array(lofar_all.colnames)
+
+describe(lofar_all['Maj'])
+
 # Area limits
 
 margin_ra = 0.1
 margin_dec = 0.1
+
+dec_down = round(np.nanmin(lofar_all['DEC']), 1)
+dec_up = round(np.nanmax(lofar_all['DEC']), 1)
+ra_down = round(np.nanmin(lofar_all['RA']), 1)
+ra_up = round(np.nanmax(lofar_all['RA']), 1)
+
+print('ra down', ra_down, 'ra up', ra_up, 'dec down', dec_down, 'dec up', dec_up)
+
+#dec_down = config["dec_down"]
+#dec_up = config["dec_up"]
+#ra_down = config["ra_down"]
+#ra_up = config["ra_up"]
 
 field = Field(ra_down, ra_up, dec_down, dec_up)
 
@@ -96,20 +131,6 @@ field_optical = Field(
     ra_up + margin_ra, 
     dec_down - margin_dec, 
     dec_up + margin_dec)
-
-# Load data
-
-combined_all = Table.read(combined_catalogue)
-
-# We will start to use the updated catalogues that include the output of the LOFAR Galaxy Zoo work.
-
-lofar_all = Table.read(radio_catalogue)
-
-np.array(combined_all.colnames)
-
-np.array(lofar_all.colnames)
-
-describe(lofar_all['Maj'])
 
 
 # Filter catalogues

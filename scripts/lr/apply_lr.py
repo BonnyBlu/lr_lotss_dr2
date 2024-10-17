@@ -6,7 +6,7 @@ import os
 import sys
 import numpy as np
 from astropy.coordinates import SkyCoord, search_around_sky
-from astropy.table import Table, join
+from astropy.table import Table, join, MaskedColumn
 from astropy import units as u
 from dotenv import load_dotenv, find_dotenv
 
@@ -173,11 +173,30 @@ combined["lr_index_sel"] = combined_aux_index.astype(float)
 print("Combine catalogues")
 pwl = join(lofar, combined, join_type='left', keys='lr_index_sel')
 print("Clean catalogues")
+# Iterate over columns in the table
 for col in pwl.colnames:
-    fv = pwl[col].fill_value
-    if (isinstance(fv, np.float64) and (fv != 1e+20)):
-        print(col, fv)
-        pwl[col].fill_value = 1e+20
+    if not isinstance(pwl[col], MaskedColumn):
+        
+        # Check if there are NaN values in the column (assuming the column is numeric)
+        if np.issubdtype(pwl[col].dtype, np.number):  # Only check numeric columns for NaNs
+            nan_mask = np.isnan(pwl[col])  # Find where NaNs are
+            if np.any(nan_mask):  # If there are any NaN values
+                print(f"Column {col} has NaN values and will be converted to a MaskedColumn.")
+                
+                # Convert the column to a MaskedColumn with NaNs masked
+                pwl[col] = MaskedColumn(pwl[col], mask=nan_mask)
+        else:
+            print(f"Column {col} is not numeric and cannot contain NaNs.")
+
+    # Now we are sure the column is either originally a MaskedColumn or has been converted to one.
+    if isinstance(pwl[col], MaskedColumn):
+        fv = pwl[col].fill_value
+
+        # Check and update the fill_value
+        if (isinstance(fv, np.float64) and (fv != 1e+20)):
+            print(f"Updating fill_value for column {col}. Old fill_value: {fv}")
+            pwl[col].fill_value = 1e+20
+        
 print("Save output")
 pwl["RA_2"].name = "ra"
 pwl["DEC_2"].name = "dec"

@@ -70,6 +70,7 @@ data/catalogue_cache/*.fits
 data/idata
 data/*.fits
 data/.Trash*/
+data/hp
 
 # Assorted
 notes.txt
