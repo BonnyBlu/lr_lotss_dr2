@@ -63,7 +63,7 @@ with open(os.path.join(config_path, "params.yml"), "r") as ymlfile:
     cfg_all = yaml.safe_load(ymlfile)
 
 load_dotenv(find_dotenv())
-REGION='hp333'
+REGION='g333'
 #REGION = os.getenv("REGION")
 config = cfg_all[REGION]
 

@@ -24,8 +24,10 @@ except NameError:
 sys.path.append(os.path.join(BASEPATH, '..', '..', 'src'))
 from mltier1 import MultiMLEstimator, parallel_process, get_sigma_all
 
+dir = sys.argv[1]                               # Working directory to change to and run the code from
+os.chdir(dir)                                   # Move to working/data directory (should be bound to container)
 
-region = sys.argv[1]
+region = sys.argv[2]
 envfile = region+'.env'
 
 load_dotenv(find_dotenv(envfile))
