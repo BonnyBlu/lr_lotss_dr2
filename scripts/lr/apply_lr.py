@@ -1,4 +1,6 @@
 # %% 
+debug = True
+
 from glob import glob
 import multiprocessing
 import pickle
@@ -9,6 +11,15 @@ from astropy.coordinates import SkyCoord, search_around_sky
 from astropy.table import Table, join, MaskedColumn
 from astropy import units as u
 from dotenv import load_dotenv, find_dotenv
+
+dir = sys.argv[1]                               # Working directory to change to and run the code from
+os.chdir(dir)                                   # Move to working/data directory (should be bound to container)
+
+if debug == True:
+    print(os.getcwd())
+
+region = sys.argv[2]
+envfile = region+'.env'
 
 try:
     BASEPATH = os.path.dirname(os.path.realpath(__file__))
@@ -21,18 +32,19 @@ except NameError:
         BASEPATH = os.getcwd()
         data_path = os.path.join(BASEPATH, "..", "..", "data")
 
+lr_path = os.path.join(data_path, "lr_outputs")
+
+if debug == True:
+    print(BASEPATH)
+    print(data_path)
+    print(lr_path)
+
 sys.path.append(os.path.join(BASEPATH, '..', '..', 'src'))
 from mltier1 import MultiMLEstimator, parallel_process, get_sigma_all
 
-dir = sys.argv[1]                               # Working directory to change to and run the code from
-os.chdir(dir)                                   # Move to working/data directory (should be bound to container)
-
-region = sys.argv[2]
-envfile = region+'.env'
-
 load_dotenv(find_dotenv(envfile))
 COMBINED_DATA_PATH = data_path + os.getenv("COMBINED_DATA_PATH")
-PARAMS_PATH = data_path + os.getenv("PARAMS_PATH")
+PARAMS_PATH = lr_path + os.getenv("PARAMS_PATH")
 THRESHOLD = os.getenv("THRESHOLD")
 RADIO_CATALOGUE = data_path + os.getenv("RADIO_CATALOGUE")
 OUTPUT_RADIO_CATALOGUE = data_path + os.getenv("OUTPUT_CATALOGUE")
@@ -156,7 +168,7 @@ likelihood_ratio = MultiMLEstimator(Q_0_colour, n_m, q_m, centers)
 def ml(i):
     return apply_ml(i, likelihood_ratio)
 print("Run LR")
-res = parallel_process(idx_lofar_unique, ml, n_jobs=n_cpus)
+res = parallel_process(idx_lofar_unique, ml, n_jobs=1)
 lofar["lr"] = np.nan                   # Likelihood ratio
 lofar["lr_dist"] = np.nan              # Distance to the selected source
 lofar["lr_index"] = np.nan             # Index of the optical source in combined

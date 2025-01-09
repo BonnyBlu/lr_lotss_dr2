@@ -7,8 +7,11 @@
 
 # ## Configuration
 
-# ### Load libraries and setup
+##################
 
+
+# ### Load libraries and setup
+debug = True
 
 import pickle
 import os
@@ -40,9 +43,51 @@ except NameError as e:
 data_path = os.path.join(ROOTPATH, "data")
 src_path = os.path.join(ROOTPATH, "src")
 config_path = os.path.join(ROOTPATH, "config")
-hp_path = os.path.join(data_path, "hp")
+out_path = os.path.join(data_path, "outputs")
+log_file = os.path.join(out_path, "outputs.yml")
 
-#print(hp_path)
+'''
+Bonny's addition of logging the Error's and Outputs
+'''
+
+# Function to initialize the log file
+def initialize_log_file():
+    with open(log_file, "w") as f:
+        f.write("")  # Clear the file
+
+def log_outputs(region, error, details=None):
+    """
+    Function to log an error to the .yml file.
+
+    :param region: The region where the error/output occurs.
+    :param error: The type of error.
+    :param details: Any additional details to log.
+    """
+    log_entry = f"{region}, \"{error}\""
+    if details:
+        log_entry += f", \"{details}\""
+
+    # Append the log entry to the .yml file
+    with open(log_file, "a") as f:
+        f.write(log_entry + "\n")  # Write each entry on a new line
+
+log_out = True
+
+batch_out = False
+
+if batch_out == True:
+    # Initialize the log file at the start of the program
+    initialize_log_file()
+
+
+'''
+End of additions, be sure to check code to remove/comment out
+the appropriate code lines.
+
+'''
+
+if debug == True:
+    print(out_path)
 
 sys.path.append(src_path)
 from mltier1 import (get_center, get_n_m, estimate_q_m, Field, SingleMLEstimator, MultiMLEstimator,
@@ -63,10 +108,15 @@ with open(os.path.join(config_path, "params.yml"), "r") as ymlfile:
     cfg_all = yaml.safe_load(ymlfile)
 
 load_dotenv(find_dotenv())
-REGION='g333'
+REGION='hp_666'       #hp_400 or g_400 if put in g_# need to unhash line 72 and change hp_# and comment out line 71
 #REGION = os.getenv("REGION")
 config = cfg_all[REGION]
 
+hp_path = os.path.join(out_path, REGION)
+#hp_path = os.path.join(out_path, 'hp_400')   # WILL HAVE TO SORT THIS FOR GAUSSIANS
+
+if debug == True:
+    print(hp_path)
 region_name = config["region_name"]
 #radio_catalogue = os.path.join(data_path, config["radio_catalogue"])
 #combined_catalogue = os.path.join(data_path, config["combined_catalogue"])
@@ -83,7 +133,7 @@ colour_limits_post = np.array(config["colour_limits_post"])
 save_intermediate = True
 plot_intermediate = False
 
-idp = os.path.join(data_path, "idata", region_name)
+idp = os.path.join(data_path, "lr_outputs", "idata", region_name)
 
 os.makedirs(idp, exist_ok=True)
 
@@ -346,6 +396,9 @@ rads = list(range(1,26))
 
 Q0_r = None # 0.6983157523356884
 
+if debug == True:
+    print('Starting Q0')
+
 if Q0_r is None:
     q_0_comp_r = Q_0(coords_lofar, coords_combined[combined_legacy], field)
 
@@ -363,15 +416,20 @@ if Q0_r is None:
                 q_0_rad_aux.append(out)
         q_0_rad_r.append(np.mean(q_0_rad_aux))
         q_0_rad_r_std.append(np.std(q_0_rad_aux))
-        print(
-            "{:2d} {:7.5f} +/- {:7.5f} [{:7.5f} {:7.5f}]".format(
-                radius,
-                np.mean(q_0_rad_aux),
-                np.std(q_0_rad_aux),
-                np.min(q_0_rad_aux),
-                np.max(q_0_rad_aux),
+        try:
+            print(
+                "{:2d} {:7.5f} +/- {:7.5f} [{:7.5f} {:7.5f}]".format(
+                    radius,
+                    np.mean(q_0_rad_aux),
+                    np.std(q_0_rad_aux),
+                    np.min(q_0_rad_aux),
+                    np.max(q_0_rad_aux),
+                )
             )
-        )
+        except ValueError:
+            if log_out == True:
+                log_outputs(REGION, "ValueError", "Error occurred in printing the Q0_r values")
+            continue
     if save_intermediate:
         np.savez_compressed(
             os.path.join(idp, "Q0_r.npz"),
@@ -392,7 +450,11 @@ if Q0_r is None:
 if Q0_r is None:
     Q0_r = q_0_rad_r[4]
 
-print(Q0_r)
+if Q0_r == 0:
+    log_outputs(REGION, "ValueError", "Q0_r is zero")
+    raise SystemExit("Q0_r is zero; logging and exiting this run")
+
+print('Q0_r',Q0_r)
 
 # Compute q(m) and n(m)
 
@@ -406,6 +468,9 @@ bin_list_r = np.linspace(11.5, 29.5, 361) # Bins of 0.05
 
 center_r = get_center(bin_list_r)
 
+if debug == True:
+    print('Calculating n_m_r kde')
+
 n_m_r = get_n_m_kde(catalogue_r["MAG_R"], center_r, field.area, bandwidth=bandwidth_r)
 
 n_m_r_cs = np.cumsum(n_m_r)
@@ -413,6 +478,9 @@ n_m_r_cs = np.cumsum(n_m_r)
 # Commented out because plots are not needed right now #
 #plt.rcParams["figure.figsize"] = (5,5)
 #plt.plot(center_r, n_m_r_cs);
+
+if debug == True:
+    print('Calculating q_m_r kde')
 
 q_m_r = estimate_q_m_kde(catalogue_r["MAG_R"], 
                       center_r, 
@@ -443,11 +511,17 @@ bin_list_w1 = np.linspace(11.5, 25.0, 361) # Bins of 0.05
 
 center_w1 = get_center(bin_list_w1)
 
+if debug == True:
+    print('Calculating n_m_w1 kde')
+
 n_m_w1 = get_n_m_kde(catalogue_w1["MAG_W1"], center_w1, field.area, bandwidth=bandwidth_w1)
 
 # Commented out because plots are not needed right now #
 #plt.rcParams["figure.figsize"] = (5,5)
 #plt.plot(center_w1, np.cumsum(n_m_w1));
+
+if debug == True:
+    print('Calculating n_m_w1 kde')
 
 q_m_w1 = estimate_q_m_kde(catalogue_w1["MAG_W1"], 
                       center_w1, 
@@ -473,11 +547,17 @@ bin_list_w2 = np.linspace(14., 26., 241) # Bins of 0.1
 
 center_w2 = get_center(bin_list_w2)
 
+if debug == True:
+    print('Calculating n_m_w2 kde')
+
 n_m_w2 = get_n_m_kde(catalogue_w2["MAG_W2"], center_w2, field.area, bandwidth=bandwidth_w2)
 
 # Commented out because plots are not needed right now #
 #plt.rcParams["figure.figsize"] = (5,5)
 #plt.plot(center_w2, np.cumsum(n_m_w2));
+
+if debug == True:
+    print('Calculating n_m_w2 kde')
 
 q_m_w2 = estimate_q_m_kde(catalogue_w2["MAG_W2"], 
                       center_w2, 
@@ -524,7 +604,13 @@ radius = 15
 idx_lofar, idx_i, d2d, d3d = search_around_sky(
     coords_lofar, coords_combined[combined_legacy], radius*u.arcsec)
 
+if debug == True:
+    print('selecting unique indices')
+
 idx_lofar_unique = np.unique(idx_lofar)
+
+if debug == True:
+    print('defining empty columns')
 
 lofar["lr_r"] = np.nan                   # Likelihood ratio
 lofar["lr_dist_r"] = np.nan              # Distance to the selected source
@@ -533,7 +619,13 @@ lofar["lr_index_r"] = np.nan             # Index of the PanSTARRS source in comb
 total_sources = len(idx_lofar_unique)
 combined_aux_index = np.arange(len(combined))
 
+if debug == True:    
+    print('total sources:', total_sources)
+
+    print('define function')
+
 def ml(i):
+    #print('index of ml', i)
     idx_0 = idx_i[idx_lofar == i]
     d2d_0 = d2d[idx_lofar == i]
     mag = catalogue_r["MAG_R"][idx_0]
@@ -547,24 +639,30 @@ def ml(i):
     c_dec = catalogue_r["DEC"][idx_0]
     c_ra_err = np.ones_like(c_ra)*0.6/3600.
     c_dec_err = np.ones_like(c_ra)*0.6/3600.
-    
+
+    #print('getting sigma of ml function', i)
     sigma_0_0, det_sigma = get_sigma_all(lofar_maj_err, lofar_min_err, lofar_pa, 
                       lofar_ra, lofar_dec, 
                       c_ra, c_dec, c_ra_err, c_dec_err)
-    
+
+    #print('getting LR', i)
     lr_0 = likelihood_ratio_r(mag, d2d_0.arcsec, sigma_0_0, det_sigma)
     chosen_index = np.argmax(lr_0)
     result = [combined_aux_index[combined_legacy][idx_0[chosen_index]], # Index
               (d2d_0.arcsec)[chosen_index],                        # distance
               lr_0[chosen_index]]                                  # LR
+    #print('result', i)
     return result
 
 
 #from joblib import Parallel, delayed
 #from tqdm import tqdm, tqdm_notebook
 
+if debug == True:
+    print('running parallel processing on ml function')
+
 #res = Parallel(n_jobs=n_cpus)(delayed(ml)(i) for i in tqdm_notebook(idx_lofar_unique))
-res = parallel_process(idx_lofar_unique, ml, n_jobs=n_cpus)
+res = parallel_process(idx_lofar_unique, ml, n_jobs=1)
 
 (lofar["lr_index_r"][idx_lofar_unique], 
  lofar["lr_dist_r"][idx_lofar_unique], 
@@ -578,6 +676,8 @@ lofar["lr_r"][np.isnan(lofar["lr_r"])] = 0
 threshold_r = np.percentile(lofar["lr_r"], 100*(1 - Q0_r))
 
 threshold_r #0.525 before
+if debug == True:
+    print('threshold r:', threshold_r)
 
 # Commented out because plots are not needed right now - Error on nonposy??#
 #plt.rcParams["figure.figsize"] = (15,6)
@@ -623,15 +723,21 @@ for radius in rads:
         q_0_rad_aux.append(out)
     q_0_rad_w1.append(np.mean(q_0_rad_aux))
     q_0_rad_w1_std.append(np.std(q_0_rad_aux))
-    print(
-        "{:2d} {:7.5f} +/- {:7.5f} [{:7.5f} {:7.5f}]".format(
-            radius,
-            np.mean(q_0_rad_aux),
-            np.std(q_0_rad_aux),
-            np.min(q_0_rad_aux),
-            np.max(q_0_rad_aux),
+    
+    try:
+        print(
+            "{:2d} {:7.5f} +/- {:7.5f} [{:7.5f} {:7.5f}]".format(
+                radius,
+                np.mean(q_0_rad_aux),
+                np.std(q_0_rad_aux),
+                np.min(q_0_rad_aux),
+                np.max(q_0_rad_aux),
+            )
         )
-    )
+    except ValueError:
+        if log_out == True:
+            log_outputs(region, "ValueError", "Error occured in printing the Q0_w1 values")
+        continue
 
 q_0_rad_w1 = np.array(q_0_rad_w1)
 q_0_rad_w1_std = np.array(q_0_rad_w1_std)
@@ -686,7 +792,7 @@ def ml_w1(i):
               lr_0[chosen_index]]                                  # LR
     return result
 
-res_w1 = parallel_process(idx_lofar_unique_w1, ml_w1, n_jobs=n_cpus)
+res_w1 = parallel_process(idx_lofar_unique_w1, ml_w1, n_jobs=1)
 #res = Parallel(n_jobs=n_cpus)(delayed(ml_w1)(i) for i in tqdm_notebook(idx_lofar_unique))
 
 indices_w1 = np.arange(len(lofar))[subsample_w1][idx_lofar_unique_w1]
@@ -705,6 +811,9 @@ lofar["lr_w1"][np.isnan(lofar["lr_w1"])] = 0
 threshold_w1 = np.percentile(lofar[subsample_w1]["lr_w1"], 100*(1 - Q0_w1))
 
 threshold_w1 # 0.026 before
+
+if debug == True:
+    print('threshold w1', threshold_w1)
 
 # Commented out because plots are not needed right now #
 #plt.rcParams["figure.figsize"] = (15,6)
@@ -750,15 +859,21 @@ for radius in rads:
         q_0_rad_aux.append(out)
     q_0_rad_w2.append(np.mean(q_0_rad_aux))
     q_0_rad_w2_std.append(np.std(q_0_rad_aux))
-    print(
-        "{:2d} {:7.5f} +/- {:7.5f} [{:7.5f} {:7.5f}]".format(
-            radius,
-            np.mean(q_0_rad_aux),
-            np.std(q_0_rad_aux),
-            np.min(q_0_rad_aux),
-            np.max(q_0_rad_aux),
+    
+    try:
+        print(
+            "{:2d} {:7.5f} +/- {:7.5f} [{:7.5f} {:7.5f}]".format(
+                radius,
+                np.mean(q_0_rad_aux),
+                np.std(q_0_rad_aux),
+                np.min(q_0_rad_aux),
+                np.max(q_0_rad_aux),
+            )
         )
-    )
+    except ValueError:
+        if log_out == True:
+            log_outputs(REGION, "ValueError", "Error occured in printing the Q0_w2 values")
+        continue
 
 q_0_rad_w2 = np.array(q_0_rad_w2)
 q_0_rad_w2_std = np.array(q_0_rad_w2_std)
@@ -813,7 +928,7 @@ def ml_w2(i):
               lr_0[chosen_index]]                                  # LR
     return result
 
-res_w2 = parallel_process(idx_lofar_unique_w2, ml_w2, n_jobs=n_cpus)
+res_w2 = parallel_process(idx_lofar_unique_w2, ml_w2, n_jobs=1)
 #res = Parallel(n_jobs=n_cpus)(delayed(ml_w2)(i) for i in tqdm_notebook(idx_lofar_unique))
 
 indices_w2 = np.arange(len(lofar))[subsample_w2][idx_lofar_unique_w2]
@@ -829,6 +944,9 @@ lofar["lr_w2"][np.isnan(lofar["lr_w2"])] = 0
 threshold_w2 = np.percentile(lofar[subsample_w2]["lr_w2"], 100*(1 - Q0_w2))
 
 threshold_w2 # 0.015 before
+
+if debug == True:
+    print('threshold w2', threshold_w2)
 
 # Commented out because plots are not needed right now #
 #plt.rcParams["figure.figsize"] = (15,6)
@@ -949,7 +1067,9 @@ for i, t0 in enumerate(t):
 
 # Duplicated sources
 
-# This is the nymber of sources of the combined catalogue that are combined to multiple LOFAR sources. In the case of the catalogue of Gaussians the number can be very high.
+# This is the number of sources of the combined catalogue that are combined to multiple LOFAR sources. In the case of the catalogue of Gaussians the number can be very high.
+if debug == True:
+    print('calculating number of sources in combined catalogue that are matched to multiple lofar sources; can be high in the Gaussian catalogues')
 
 values, counts = np.unique(lofar[lofar["lr_type_1"] != 0]["lr_index_1"], return_counts=True)
 
@@ -964,6 +1084,8 @@ n_dup, n_sour = np.unique(counts[counts > 1], return_counts=True)
 #plt.ylabel("Number of sources in the category")
 
 # Save intermediate data
+if debug == True:
+    print('saving intermediate data')
 
 if save_intermediate:
     pickle.dump([bin_list_r, center_r, Q0_r, n_m_r, q_m_r], 
@@ -996,6 +1118,9 @@ numbers_combined_bins
 bandwidth_colour = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
         0.5, 0.5, 0.5, 0.5, 0.5]
 
+if debug == True:
+    print('calculating n_m for w1, w2, and r')
+
 n_m = []
 
 # W2 only sources
@@ -1022,6 +1147,8 @@ for i in range(2, len(colour_bin_def)):
 # The parameters derived from the matched LOFAR galaxies: $q_0$, q(m) and the number of sources per category.
 
 # The columns "category", "W1mag" and "i" will contain the properties of the matched galaxies and will be updated in each iteration to save space.
+if debug == True:
+    print('setting up columns for filling in each iteration')
 
 lofar["category"] = np.nan
 lofar["MAG_W2"] = np.nan
@@ -1051,6 +1178,8 @@ q0_total = np.sum(Q_0_colour)
 q0_total
 
 # The q(m) is not estimated with the method of Fleuren et al. but with the most updated distributions and numbers for the matches.
+if debug == True:
+    print('calculating q_m for w1, w2 and r')
 
 q_m = []
 radius = 15. 
@@ -1135,6 +1264,8 @@ for i in range(2, len(numbers_lofar_combined_bins)):
 # * https://stackoverflow.com/questions/432112/is-there-a-numpy-function-to-return-the-first-index-of-something-in-an-array
 
 # Save intermediate parameters
+if debug == True:
+    print('saving intermediate data')
 
 if save_intermediate:
     pickle.dump([bin_list, centers, Q_0_colour, n_m, q_m], 
@@ -1146,6 +1277,9 @@ selection = ~np.isnan(combined["category"]) # Avoid the two dreaded sources with
 catalogue = combined[selection]
 
 radius = 15
+
+if debug == True:
+    print('defining the ml function')
 
 def apply_ml(i, likelihood_ratio_function):
     idx_0 = idx_i[idx_lofar == i]
@@ -1194,7 +1328,10 @@ likelihood_ratio = MultiMLEstimator(Q_0_colour, n_m, q_m, centers)
 def ml(i):
     return apply_ml(i, likelihood_ratio)
 
-res = parallel_process(idx_lofar_unique, ml, n_jobs=n_cpus)
+if debug == True:
+    print('running the parallel process on the ml function')
+
+res = parallel_process(idx_lofar_unique, ml, n_jobs=1)
 #res = Parallel(n_jobs=n_cpus)(delayed(ml)(i) for i in tqdm_notebook(idx_lofar_unique))
 
 lofar["lr_index_2"] = np.nan
@@ -1214,6 +1351,8 @@ threshold = np.percentile(lofar["lr_2"], 100*(1 - q0_total))
 #threshold = np.percentile(lofar["lr_2"], 100*(1 - manual_q0))
 
 threshold # Old: 0.69787
+if debug == True:
+    print('threshold:', threshold)
 
 # Commented out because plots are not needed right now #
 #plt.rcParams["figure.figsize"] = (15,6)
@@ -1289,45 +1428,47 @@ if rerun_iter:
 
 radius = 15. 
 
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 
-def plot_q_n_m(q_m, n_m):
-    fig, a = plt.subplots()
+#def plot_q_n_m(q_m, n_m):
+#    fig, a = plt.subplots()
 
-    for i, q_m_k in enumerate(q_m):
-        #plot(centers[i], q_m_old[i]/n_m_old[i])
-        a = plt.subplot(4,4,i+1)
-        if i not in [-1]:
-            n_m_aux = n_m[i]/np.sum(n_m[i])
-            lwidths = (n_m_aux/np.max(n_m_aux)*10).astype(float) + 1
-            #print(lwidths)
+#    for i, q_m_k in enumerate(q_m):
+#        #plot(centers[i], q_m_old[i]/n_m_old[i])
+#        a = plt.subplot(4,4,i+1)
+#        if i not in [-1]:
+#            n_m_aux = n_m[i]/np.sum(n_m[i])
+#            lwidths = (n_m_aux/np.max(n_m_aux)*10).astype(float) + 1
+#            #print(lwidths)
 
-            y_aux = q_m_k/n_m[i]
-            factor = np.max(y_aux[low:high])
-            y = y_aux
-            #print(y)
-            x = centers[i]
+#            y_aux = q_m_k/n_m[i]
+#            factor = np.max(y_aux[low:high])
+#            y = y_aux
+#            #print(y)
+#            x = centers[i]
 
-            points = np.array([x, y]).T.reshape(-1, 1, 2)
-            segments = np.concatenate([points[:-1], points[1:]], axis=1)
+#            points = np.array([x, y]).T.reshape(-1, 1, 2)
+#            segments = np.concatenate([points[:-1], points[1:]], axis=1)
 
-            lc = LineCollection(segments, linewidths=lwidths, color=colors[i])
+#            lc = LineCollection(segments, linewidths=lwidths, color=colors[i])
 
-            a.add_collection(lc)
+#            a.add_collection(lc)
 
             #plot(centers[i], x/factor, color=colors[i-1])
-            plt.xlim([12, 30])
-            if i == 0:
-                plt.xlim([10, 23])
-            plt.ylim([0, 1.2*factor])
+#            plt.xlim([12, 30])
+#            if i == 0:
+#                plt.xlim([10, 23])
+#            plt.ylim([0, 1.2*factor])
 
-    plt.subplots_adjust(left=0.125, 
-                    bottom=0.1, 
-                    right=0.9, 
-                    top=0.9,
-                    wspace=0.4, 
-                    hspace=0.2)
-    return fig
+#    plt.subplots_adjust(left=0.125, 
+#                    bottom=0.1, 
+#                    right=0.9, 
+#                    top=0.9,
+#                    wspace=0.4, 
+#                    hspace=0.2)
+#    return fig
+if debug == True:
+    print('starting iterations')
 
 for j in range(10):
     iteration = j+3 
@@ -1389,7 +1530,8 @@ for j in range(10):
     def ml(i):
         return apply_ml(i, likelihood_ratio)
     ## Run the ML
-    res = parallel_process(idx_lofar_unique, ml, n_jobs=n_cpus)
+    print('starting parallel process')
+    res = parallel_process(idx_lofar_unique, ml, n_jobs=1)
     #res = Parallel(n_jobs=n_cpus)(delayed(ml)(i) for i in tqdm_notebook(idx_lofar_unique))
     lofar["lr_index_{}".format(iteration)] = np.nan
     lofar["lr_dist_{}".format(iteration)] = np.nan
@@ -1464,3 +1606,9 @@ if good:
     if os.path.exists("{}/lofar_params_{}.pckl".format(idp, REGION)):
         os.remove("{}/lofar_params_{}.pckl".format(idp, REGION))
     copyfile("{}/lofar_params_{}.pckl".format(idp, iteration), "{}/lofar_params_{}.pckl".format(idp, REGION))
+
+print('Final stored value of threshold is:', threshold)
+
+if log_out == True:
+    log_outputs(REGION, "Threshold", f"The final threshold value is: {threshold}")
+
