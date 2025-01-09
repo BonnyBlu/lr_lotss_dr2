@@ -71,6 +71,7 @@ data/idata
 data/*.fits
 data/.Trash*/
 data/hp
+data/*
 
 # Assorted
 notes.txt
