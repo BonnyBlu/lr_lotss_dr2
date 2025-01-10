@@ -1,2 +1,0 @@
-nohup: ignoring input
-FATAL:   While checking container encryption: could not open image /home/azimuth/lr_lotss_dr2/LRcontainer.sif: failed to retrieve path for /home/azimuth/lr_lotss_dr2/LRcontainer.sif: lstat /home/azimuth/lr_lotss_dr2/LRcontainer.sif: no such file or directory
