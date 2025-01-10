@@ -28,6 +28,7 @@ from IPython.display import clear_output
 
 dir = sys.argv[1]                               # Working directory to change to and run the code from
 os.chdir(dir)                                   # Move to working/data directory (should be bound to container)
+REGION = sys.argv[2]                            # Assign the hp region as an input
 
 try:
     BASEPATH = os.path.dirname(os.path.realpath(__file__))
@@ -75,7 +76,7 @@ log_out = True
 
 batch_out = False
 
-if batch_out == True:
+if batch_out == False:
     # Initialize the log file at the start of the program
     initialize_log_file()
 
@@ -108,7 +109,7 @@ with open(os.path.join(config_path, "params.yml"), "r") as ymlfile:
     cfg_all = yaml.safe_load(ymlfile)
 
 load_dotenv(find_dotenv())
-REGION='hp_666'       #hp_400 or g_400 if put in g_# need to unhash line 72 and change hp_# and comment out line 71
+#REGION='hp_666'       #hp_400 or g_400 if put in g_# need to unhash line 116 and change hp_# and comment out line 115
 #REGION = os.getenv("REGION")
 config = cfg_all[REGION]
 
