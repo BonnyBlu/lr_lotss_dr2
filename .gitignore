@@ -75,5 +75,5 @@ data/*
 
 # Assorted
 notes.txt
-.env
+*.env
 reports/figures/examples*

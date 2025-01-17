@@ -1,16 +1,17 @@
 ---
-hp_100:
-    region_name: "params_100"
-    radio_catalogue: "radio_100.fits"
-    combined_catalogue: "optical_nn_100.fits"
-    max_major: 15
-    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
 hp_848:
     region_name: "params_848"
     radio_catalogue: "radio_848.fits"
     combined_catalogue: "optical_nn_848.fits"
     max_major: 15
     colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_848:
+    region_name: "params_gauss_848"
+    radio_catalogue: "gaussian_848.fits"
+    combined_catalogue: "optical_nn_848.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+    
 hp_333:
     region_name: "params_333"
     radio_catalogue: "radio_333.fits"
@@ -18,50 +19,334 @@ hp_333:
     max_major: 15
     colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
 g_333:
-    region_name: "params_333_gauss"
+    region_name: "params_gauss_333"
     radio_catalogue: "gaussian_333.fits"
     combined_catalogue: "optical_nn_333.fits"
     max_major: 15
     colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
-hp_334:
-    region_name: "params_334"
-    radio_catalogue: "radio_334.fits"
-    combined_catalogue: "optical_nn_334.fits"
+    
+hp_847:
+    region_name: "params_847"
+    radio_catalogue: "radio_847.fits"
+    combined_catalogue: "optical_nn_847.fits"
     max_major: 15
     colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
-hp_332:
-    region_name: "params_332"
-    radio_catalogue: "radio_332.fits"
-    combined_catalogue: "optical_nn_332.fits"
+g_847:
+    region_name: "params_gauss_847"
+    radio_catalogue: "gaussian_847.fits"
+    combined_catalogue: "optical_nn_847.fits"
     max_major: 15
     colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+    
+hp_842:
+    region_name: "params_842"
+    radio_catalogue: "radio_842.fits"
+    combined_catalogue: "optical_nn_842.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_842:
+    region_name: "params_gauss_842"
+    radio_catalogue: "gaussian_842.fits"
+    combined_catalogue: "optical_nn_842.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+    
+hp_1060:
+    region_name: "params_1060"
+    radio_catalogue: "radio_1060.fits"
+    combined_catalogue: "optical_nn_1060.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_1060:
+    region_name: "params_gauss_1060"
+    radio_catalogue: "gaussian_1060.fits"
+    combined_catalogue: "optical_nn_1060.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+    
+hp_93:
+    region_name: "params_93"
+    radio_catalogue: "radio_93.fits"
+    combined_catalogue: "optical_nn_93.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_93:
+    region_name: "params_gauss_93"
+    radio_catalogue: "gaussian_93.fits"
+    combined_catalogue: "optical_nn_93.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+    
+hp_98:
+    region_name: "params_98"
+    radio_catalogue: "radio_98.fits"
+    combined_catalogue: "optical_nn_98.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_98:
+    region_name: "params_gauss_98"
+    radio_catalogue: "gaussian_98.fits"
+    combined_catalogue: "optical_nn_98.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+    
+hp_692:
+    region_name: "params_692"
+    radio_catalogue: "radio_692.fits"
+    combined_catalogue: "optical_nn_692.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_692:
+    region_name: "params_gauss_692"
+    radio_catalogue: "gaussian_692.fits"
+    combined_catalogue: "optical_nn_692.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+    
+hp_99:
+    region_name: "params_99"
+    radio_catalogue: "radio_99.fits"
+    combined_catalogue: "optical_nn_99.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_99:
+    region_name: "params_gauss_99"
+    radio_catalogue: "gaussian_99.fits"
+    combined_catalogue: "optical_nn_99.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
+hp_926:
+    region_name: "params_926"
+    radio_catalogue: "radio_926.fits"
+    combined_catalogue: "optical_nn_926.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_926:
+    region_name: "params_gauss_926"
+    radio_catalogue: "gaussian_926.fits"
+    combined_catalogue: "optical_nn_926.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
+hp_566:
+    region_name: "params_566"
+    radio_catalogue: "radio_566.fits"
+    combined_catalogue: "optical_nn_566.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_566:
+    region_name: "params_gauss_566"
+    radio_catalogue: "gaussian_566.fits"
+    combined_catalogue: "optical_nn_566.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
+hp_765:
+    region_name: "params_765"
+    radio_catalogue: "radio_765.fits"
+    combined_catalogue: "optical_nn_765.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_765:
+    region_name: "params_gauss_765"
+    radio_catalogue: "gaussian_765.fits"
+    combined_catalogue: "optical_nn_765.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
+hp_761:
+    region_name: "params_761"
+    radio_catalogue: "radio_761.fits"
+    combined_catalogue: "optical_nn_761.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_761:
+    region_name: "params_gauss_761"
+    radio_catalogue: "gaussian_761.fits"
+    combined_catalogue: "optical_nn_761.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
+hp_248:
+    region_name: "params_248"
+    radio_catalogue: "radio_248.fits"
+    combined_catalogue: "optical_nn_248.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_248:
+    region_name: "params_gauss_248"
+    radio_catalogue: "gaussian_248.fits"
+    combined_catalogue: "optical_nn_248.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
+hp_701:
+    region_name: "params_701"
+    radio_catalogue: "radio_701.fits"
+    combined_catalogue: "optical_nn_701.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_701:
+    region_name: "params_gauss_701"
+    radio_catalogue: "gaussian_701.fits"
+    combined_catalogue: "optical_nn_701.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
+hp_247:
+    region_name: "params_247"
+    radio_catalogue: "radio_247.fits"
+    combined_catalogue: "optical_nn_247.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_247:
+    region_name: "params_gauss_247"
+    radio_catalogue: "gaussian_247.fits"
+    combined_catalogue: "optical_nn_247.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
+hp_160:
+    region_name: "params_160"
+    radio_catalogue: "radio_160.fits"
+    combined_catalogue: "optical_nn_160.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_160:
+    region_name: "params_gauss_160"
+    radio_catalogue: "gaussian_160.fits"
+    combined_catalogue: "optical_nn_160.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+    
+hp_341:
+    region_name: "params_341"
+    radio_catalogue: "radio_341.fits"
+    combined_catalogue: "optical_nn_341.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_341:
+    region_name: "params_gauss_341"
+    radio_catalogue: "gaussian_341.fits"
+    combined_catalogue: "optical_nn_341.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
+hp_516:
+    region_name: "params_516"
+    radio_catalogue: "radio_516.fits"
+    combined_catalogue: "optical_nn_516.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_516:
+    region_name: "params_gauss_516"
+    radio_catalogue: "gaussian_516.fits"
+    combined_catalogue: "optical_nn_516.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+    
+hp_162:
+    region_name: "params_162"
+    radio_catalogue: "radio_162.fits"
+    combined_catalogue: "optical_nn_162.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_162:
+    region_name: "params_gauss_162"
+    radio_catalogue: "gaussian_162.fits"
+    combined_catalogue: "optical_nn_162.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
 hp_400:
     region_name: "params_400"
     radio_catalogue: "radio_400.fits"
     combined_catalogue: "optical_nn_400.fits"
     max_major: 15
     colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
 g_400:
     region_name: "params_gauss_400"
     radio_catalogue: "gaussian_400.fits"
     combined_catalogue: "optical_nn_400.fits"
     max_major: 15
     colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
-hp_666:
-    region_name: "params_666"
-    radio_catalogue: "radio_666.fits"
-    combined_catalogue: "optical_nn_666.fits"
+
+hp_844:
+    region_name: "params_844"
+    radio_catalogue: "radio_844.fits"
+    combined_catalogue: "optical_nn_844.fits"
     max_major: 15
     colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
-hp_845:
-    region_name: "params_845"
-    radio_catalogue: "radio_845.fits"
-    combined_catalogue: "optical_nn_845.fits"
+g_844:
+    region_name: "params_gauss_844"
+    radio_catalogue: "gaussian_844.fits"
+    combined_catalogue: "optical_nn_844.fits"
     max_major: 15
     colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
-hp_1116:
-    region_name: "params_1116"
-    radio_catalogue: "radio_1116.fits"
-    combined_catalogue: "optical_nn_1116.fits"
+
+hp_858:
+    region_name: "params_858"
+    radio_catalogue: "radio_858.fits"
+    combined_catalogue: "optical_nn_858.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_858:
+    region_name: "params_gauss_858"
+    radio_catalogue: "gaussian_858.fits"
+    combined_catalogue: "optical_nn_858.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
+hp_75:
+    region_name: "params_75"
+    radio_catalogue: "radio_75.fits"
+    combined_catalogue: "optical_nn_75.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_75:
+    region_name: "params_gauss_75"
+    radio_catalogue: "gaussian_75.fits"
+    combined_catalogue: "optical_nn_75.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
+hp_77:
+    region_name: "params_77"
+    radio_catalogue: "radio_77.fits"
+    combined_catalogue: "optical_nn_77.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_77:
+    region_name: "params_gauss_77"
+    radio_catalogue: "gaussian_77.fits"
+    combined_catalogue: "optical_nn_77.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
+hp_94:
+    region_name: "params_94"
+    radio_catalogue: "radio_94.fits"
+    combined_catalogue: "optical_nn_94.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_94:
+    region_name: "params_gauss_94"
+    radio_catalogue: "gaussian_94.fits"
+    combined_catalogue: "optical_nn_94.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+
+hp_1181:
+    region_name: "params_1181"
+    radio_catalogue: "radio_1181.fits"
+    combined_catalogue: "optical_nn_1181.fits"
+    max_major: 15
+    colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]
+g_1181:
+    region_name: "params_gauss_1181"
+    radio_catalogue: "gaussian_1181.fits"
+    combined_catalogue: "optical_nn_1181.fits"
     max_major: 15
     colour_limits_post: [0.7, 1.1, 1.5, 1.9, 2.3, 2.7, 3.1, 3.5, 4.1]

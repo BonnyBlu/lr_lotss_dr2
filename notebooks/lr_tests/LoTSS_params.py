@@ -30,6 +30,8 @@ dir = sys.argv[1]                               # Working directory to change to
 os.chdir(dir)                                   # Move to working/data directory (should be bound to container)
 REGION = sys.argv[2]                            # Assign the hp region as an input
 
+gauss = False
+
 try:
     BASEPATH = os.path.dirname(os.path.realpath(__file__))
     ROOTPATH = os.path.join(BASEPATH, "..", "..")
@@ -74,7 +76,7 @@ def log_outputs(region, error, details=None):
 
 log_out = True
 
-batch_out = False
+batch_out = True
 
 if batch_out == False:
     # Initialize the log file at the start of the program
@@ -113,8 +115,12 @@ load_dotenv(find_dotenv())
 #REGION = os.getenv("REGION")
 config = cfg_all[REGION]
 
-hp_path = os.path.join(out_path, REGION)
-#hp_path = os.path.join(out_path, 'hp_400')   # WILL HAVE TO SORT THIS FOR GAUSSIANS
+if gauss == False:
+    print('Calculating radio source paramaters into params_###')
+    hp_path = os.path.join(out_path, REGION)
+else:
+    hp_path = os.path.join(out_path, 'hp_' + REGION[2:])   # WILL HAVE TO SORT THIS FOR GAUSSIANS
+    print('Calculating gaussian source parameters into params_gauss_###')
 
 if debug == True:
     print(hp_path)
@@ -454,6 +460,10 @@ if Q0_r is None:
 if Q0_r == 0:
     log_outputs(REGION, "ValueError", "Q0_r is zero")
     raise SystemExit("Q0_r is zero; logging and exiting this run")
+
+if np.isnan(Q0_r):
+    log_outputs(REGION, "ValueError", "Q0_r is NAN")
+    raise SystemExit("Q0_r is NAN; logging and exiting this run")
 
 print('Q0_r',Q0_r)
 
@@ -808,8 +818,13 @@ lofar["lr_w1"][np.isnan(lofar["lr_w1"])] = 0
 
 
 # The threshold can be adjusted to match the new $Q_0$ value obtained with the alternative method.
+try:
+    threshold_w1 = np.percentile(lofar[subsample_w1]["lr_w1"], 100*(1 - Q0_w1))
+except ValueError:
+    if log_out == True:
+        log_outputs(REGION, "ValueError", "Threshold of w1 is out of range")
+        raise SystemExit("Threshold of w1 is out of range of 0 - 100; logging and exiting this run")
 
-threshold_w1 = np.percentile(lofar[subsample_w1]["lr_w1"], 100*(1 - Q0_w1))
 
 threshold_w1 # 0.026 before
 
@@ -942,8 +957,13 @@ indices_w2 = np.arange(len(lofar))[subsample_w2][idx_lofar_unique_w2]
 
 lofar["lr_w2"][np.isnan(lofar["lr_w2"])] = 0
 
-threshold_w2 = np.percentile(lofar[subsample_w2]["lr_w2"], 100*(1 - Q0_w2))
-
+try:
+    threshold_w2 = np.percentile(lofar[subsample_w2]["lr_w2"], 100*(1 - Q0_w2))
+except ValueError:
+    if log_out == True:
+        log_outputs(REGION, "ValueError", "Threshold of w2 is out of range")
+        raise SystemExit("Threshold of w2 is out of range of 0 - 100; logging and exiting this run")
+    
 threshold_w2 # 0.015 before
 
 if debug == True:
