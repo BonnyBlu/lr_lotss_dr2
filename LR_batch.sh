@@ -6,9 +6,9 @@
 ## Paths and Arguments
 ####################
 
-_DIR=$1			## The path to the output directory		
+OUT_DIR=$1			## The path to the output directory		
 SINGULARITY_PATH=$2		## The path to the Singulairty container - Check name
-DATA_PATH=$3			## The path to the mosaics - unlikely to change
+DATA_PATH=$3			## The path to the healpixs - unlikely to change
 			## The path to the location of the scripts
 LOG_FILE= 	## The place where failed mosaics record is stored
 
@@ -59,19 +59,7 @@ EOF
 Clear()
 {
 
-    ## This removes the symlinks from each folder.
-
-    for d in "${MOSAIC_PATH}"*/ ; do 
-    
-        MOSAIC_DIR="${PYBDSF_DIR}$(basename ${d})/"
-        #echo "${d}mosaic-blanked.fits" "${MOSAIC_DIR}mosaic-blanked.fits"
-        #echo "${SINGULARITY_PATH}" "${MOSAIC_DIR}ddf-tmp.sif"
-    
-        echo "Unlinking symlink from ${MOSAIC_DIR}"
-        #unlink "${MOSAIC_DIR}ddf-tmp.sif"              ## symlink to container - check name - If they hae been used and need to be removed
-        unlink "${MOSAIC_DIR}mosaic-blanked.fits"      ## Symlink to mosaic - check name
-     
-    done
+## can leave this here in case I need any function or options
 
 }
 
@@ -82,15 +70,10 @@ Clear()
 ## Options
 ####################
 
-while getopts ":ch" option; do
+while getopts ":h" option; do
 
     case ${option} in
     
-        c) # Clears the symlinks
-            Clear
-            exit 0
-            ;;
-        
         h) # Pulls up the help and info
             Help
             exit 0
@@ -110,49 +93,59 @@ done
 ## Main code
 ####################
 
+
+All of this needs to be changed so it says run the LR_run_scripts.sh 
+There will still need to be a plath to the singularity container
+There will not be a need to create symlinks for the data
+Do we want to do a check for if the data is already there or will we always go with an overwrite aspect?
+Region needs to be an input from the folder names
+
+
+
+
 ## This sections checks if the code has already been run; clears a folder of the same name
 ## and starts again, if it was mid run. Here the code makes the folders and the symlinks.
 
 job_ids=()                                              ##  Set up an empty array called job_ids to store the output job_ids
 
-for d in "${MOSAIC_PATH}"*/ ; do                        ##  Change back to MOSAIC_PATH
+for d in "${DATA_PATH}"*/ ; do                        ##  
     
-    MOSAIC_DIR="${PYBDSF_DIR}$(basename ${d})/"
+    DATA_DIR="${PYBDSF_DIR}$(basename ${d})/"
     #echo "${d}mosaic-blanked.fits" "${MOSAIC_DIR}mosaic-blanked.fits"
 
-    if [ -d "${MOSAIC_DIR}" ] && [ -f "${MOSAIC_DIR}mosaic-blanked--final.srl.fits" ]; then     ## Look for folder and final file
+    if [ -d "${DATA_DIR}" ] && [ -f "${DATA_DIR}mosaic-blanked--final.srl.fits" ]; then     ## Look for folder and final file
 
-        echo "PyBDSF already completed on ${MOSAIC_DIR}."                                       ## If there state it is complete
+        echo "PyBDSF already completed on ${DATA_DIR}."                                       ## If there state it is complete
         
-    elif [ -d "${MOSAIC_DIR}" ] && [ ! -f "${MOSAIC_DIR}mosaic-blanked--final.srl.fits" ]; then     ## Look for folder and not final file
+    elif [ -d "${DATA_DIR}" ] && [ ! -f "${DATA_DIR}mosaic-blanked--final.srl.fits" ]; then     ## Look for folder and not final file
 
-        echo "Clearing ${MOSAIC_DIR} and creating new folder with symlinks"         ## State if this is the case and will clear it
+        echo "Clearing ${DATA_DIR} and creating new folder with symlinks"         ## State if this is the case and will clear it
     
-        rm -r "${MOSAIC_DIR}"           ## Clear folder and all contents
+        rm -r "${DATA_DIR}"           ## Clear folder and all contents
     
-        mkdir "${MOSAIC_DIR}"           ## Remake folder and symlinks - continue with batch
+        mkdir "${DATA_DIR}"           ## Remake folder and symlinks - continue with batch
         
         #ln -s "${SINGULARITY_PATH}" "${MOSAIC_DIR}ddf-tmp.sif"              ## Symlink to container - check name - If you want to use
-        ln -s "${d}mosaic-blanked.fits" "${MOSAIC_DIR}mosaic-blanked.fits"  ## Symlink to mosaic - check name
+        ln -s "${d}mosaic-blanked.fits" "${DATA_DIR}mosaic-blanked.fits"  ## Symlink to mosaic - check name
    
-        job_id=$(sbatch PyBDSF_Singularity.sh "${MOSAIC_DIR}" "${MOSAIC_PATH}" "${SINGULARITY_PATH}" | awk '{print $4}') ##  This batches PyBDSF_Singularity and stores the job_id in the array
+        job_id=$(sbatch PyBDSF_Singularity.sh "${DATA_DIR}" "${DATA_PATH}" "${SINGULARITY_PATH}" | awk '{print $4}') ##  This batches PyBDSF_Singularity and stores the job_id in the array
         
-        echo "Running ${MOSAIC_DIR} with the following batch number: ${job_id}"    ##  This echos the directory the job is being run on
+        echo "Running ${DATA_DIR} with the following batch number: ${job_id}"    ##  This echos the directory the job is being run on
 
         job_ids+=("${job_id}")
 
-    elif [ ! -d "${MOSAIC_DIR}" ]; then                 ## Check if folder does not exist
+    elif [ ! -d "${DATA_DIR}" ]; then                 ## Check if folder does not exist
 
-        echo "Creating ${MOSAIC_DIR} with symlinks"     ## Stating will make folder and symlinks
+        echo "Creating ${DATA_DIR} with symlinks"     ## Stating will make folder and symlinks
 
-        mkdir "${MOSAIC_DIR}"                           ## Creates folder - continues with batch
+        mkdir "${DATA_DIR}"                           ## Creates folder - continues with batch
     
         #ln -s "${SINGULARITY_PATH}" "${MOSAIC_DIR}ddf-tmp.sif"              ## Symlink to container - check name - if you want to use
-        ln -s "${d}mosaic-blanked.fits" "${MOSAIC_DIR}mosaic-blanked.fits"  ## Symlink to mosaic - check name    
+        ln -s "${d}mosaic-blanked.fits" "${DATA_DIR}mosaic-blanked.fits"  ## Symlink to mosaic - check name    
    
-        job_id=$(sbatch PyBDSF_Singularity.sh "${MOSAIC_DIR}" "${MOSAIC_PATH}" "${SINGULARITY_PATH}" | awk '{print $4}') ##  This batches PyBDSF_Singularity and stores the job_id in the array
+        job_id=$(sbatch PyBDSF_Singularity.sh "${DATA_DIR}" "${DATA_PATH}" "${SINGULARITY_PATH}" | awk '{print $4}') ##  This batches PyBDSF_Singularity and stores the job_id in the array
      
-        echo "Running ${MOSAIC_DIR} with the following batch number: ${job_id}"    ##  This echos the directory the job is being run on
+        echo "Running ${DATA_DIR} with the following batch number: ${job_id}"    ##  This echos the directory the job is being run on
         
         job_ids+=("${job_id}")
         
@@ -162,6 +155,9 @@ for d in "${MOSAIC_PATH}"*/ ; do                        ##  Change back to MOSAI
      
 done
 
+
+This section is cool and I think I want to keep it in as a track o fwhen things complete/fail
+I do not think this section needs to be changed???
 
 ## This section checks to make sure all the previous batch jobs have completed
 
@@ -227,13 +223,5 @@ while true; do
 
 done
 
-
-## This section runs the un-batching code after the batch jobs have run
-
-echo "Un-batching the PyBDSF output into ConcatCats folder"
-
-#echo "${SCRIPT_PATH}ConcatCats.sh"
-
-sbatch "${SCRIPT_PATH}ConcatCats.sh" "${PYBDSF_DIR}" "${MOSAIC_PATH}" "${SINGULARITY_PATH}" "${SCRIPT_PATH}"
 
 ####################

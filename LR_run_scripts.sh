@@ -3,6 +3,32 @@
 ## A bash script to set off running both scripts of the LR code through singularity ##
 
 ####################
+## Batching code
+####################
+
+Need to check this batching code to make sure that this is 2 cpus on a single node and 
+other jobs can also use the cpus on the same node
+
+
+## This batch set up runs one job on one node using 2 CPUs but not exclusively 
+## so other jobs can run on this node. To change the number of CPUs used 
+## change ntasks; to change/allocate memory then change mem. The output 
+## files are named by default to <jobname>_<jobID> but the user can change this.
+
+#SBATCH --job-name=LRSingularity    ##  Job Name
+#SBATCH --nodes=1                       ##  Number of nodes to run tasks over
+#SBATCH --ntasks=2                      ##  Requests 2 CPUs on node
+#SBATCH --cpus-per-task=2               ##  Number of CPUs per task
+##SBATCH --exclusive                    ##  Allocated nodes not shared with other jobs
+##SBATCH --mem-40g                      ##  Memory per node
+
+#SBATCH --error=logs/%x_%j.err          ##  Error file
+#SBATCH --output=logs/%x_%j.out         ##  Log file
+
+####################
+
+
+####################
 ## Paths and Arguments ##
 ####################
 
@@ -121,6 +147,17 @@ done
 ## using the input file, an intermediate save file, and the output file.
 
 
+Do I need something here that checks to see if the parameters need to be calculated? 
+Is this going to be in the inputs file?
+
+Therefore this will be an if parameters are to be calculated run this file
+else run only the second file.
+
+Therefore how do I pull out the True/False from the .yml file?
+
+Also need to have calls for if I am doing the Gaussians and the nearest neighbours?
+
+
 ## To run the LoTSS_params.py file
 
 #cd /project/repos/lr_lotss_dr2/notebooks/lr_tests         # Change to the directory which contains the script
@@ -130,12 +167,17 @@ done
 ## Need to add the input file once adapted the script to take an input file
 ## will need to give an output file, and therefore take an intermediatory output file name??
 
+
 python /project/repos/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}           
 
 
-
-
 ## To run the apply_lr.py file
+
+
+
+Need to set up the output.yml file from the above script to be a dictionary form 
+Therefore need work out how to find and call the threshold as an input in to this script?
+
 
 #cd /project/repos/lr_lotss_dr2/scripts/lr        # Change to the directory which contains the script
 
@@ -144,7 +186,7 @@ python /project/repos/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_
 ## Need to add the input file once adapted the script to take an input file - probably need to adapt to take two input files, one for the generic inputs and one for the thresholds
 ## Will need to give an output file of errors, and therefore will need to give an output file name.
 
-python /project/repos/lr_lotss_dr2/scripts/lr/LoTSS_params.py ${WORKING_DIR} ${REGION}  
+python /project/repos/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}  
 
 
 
