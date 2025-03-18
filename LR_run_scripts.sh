@@ -15,12 +15,12 @@ other jobs can also use the cpus on the same node
 ## change ntasks; to change/allocate memory then change mem. The output 
 ## files are named by default to <jobname>_<jobID> but the user can change this.
 
-#SBATCH --job-name=LRSingularity    ##  Job Name
+#SBATCH --job-name=LRSingularity        ##  Job Name
 #SBATCH --nodes=1                       ##  Number of nodes to run tasks over
 #SBATCH --ntasks=2                      ##  Requests 2 CPUs on node
 #SBATCH --cpus-per-task=2               ##  Number of CPUs per task
-##SBATCH --exclusive                    ##  Allocated nodes not shared with other jobs
-##SBATCH --mem-40g                      ##  Memory per node
+##SBATCH --exclusive                    ##  Allocated nodes not shared with other jobs # commented out so not applied
+##SBATCH --mem-40g                      ##  Memory per node # Commented out so any memory allowed
 
 #SBATCH --error=logs/%x_%j.err          ##  Error file
 #SBATCH --output=logs/%x_%j.out         ##  Log file
@@ -98,7 +98,8 @@ Setup()
     '''
     This setup function will setup the conda and terminal environments and pathways.
     This will need to be run in the singularity container before the two scripts are
-    run. 
+    run.
+    *** Check if this is needed ***
     '''
 
     conda active myenv
@@ -167,6 +168,11 @@ Also need to have calls for if I am doing the Gaussians and the nearest neighbou
 ## Need to add the input file once adapted the script to take an input file
 ## will need to give an output file, and therefore take an intermediatory output file name??
 
+## NOTE ##
+
+# This line will change once the container has been changed to include the scripts inside it.
+# In which case it will be fine to hardcode the location of the script as it will be inside the container
+
 
 python /project/repos/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}           
 
@@ -185,6 +191,11 @@ Therefore need work out how to find and call the threshold as an input in to thi
 
 ## Need to add the input file once adapted the script to take an input file - probably need to adapt to take two input files, one for the generic inputs and one for the thresholds
 ## Will need to give an output file of errors, and therefore will need to give an output file name.
+
+## NOTE ##
+
+# This line will change once the code is stored inside the container.
+# In which case it will also be okay to hardcode the pathway to the script.
 
 python /project/repos/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}  
 

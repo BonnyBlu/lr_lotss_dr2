@@ -18,7 +18,7 @@ lr_inputs:
     rad_hp_in: 'radio_'                                                  # radio input catalogue
     gauss_in: 'gaussian_'                                                # gaussian input catalogue
     rad_hp_out: 'radio_lr_'                                              # radio output catalogue
-    gauss_out: 'gaussian_lr'                                             # gaussian output catalogue
+    gauss_out: 'gaussian_lr_'                                             # gaussian output catalogue
     rad_nn_in: 'radio_nn_'                                               # radio nearest neighbours input catalogue
     gauss_nn_in: 'gaussian_nn_'                                          # gaussian nearest neighbours input catalogue
     rad_nn_out: 'radio_nn_lr_'                                           # radio nearest neighbours output catalogue

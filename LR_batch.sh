@@ -94,8 +94,13 @@ done
 ####################
 
 
+
+
+
+
+
 All of this needs to be changed so it says run the LR_run_scripts.sh 
-There will still need to be a plath to the singularity container
+There will still need to be a path to the singularity container
 There will not be a need to create symlinks for the data
 Do we want to do a check for if the data is already there or will we always go with an overwrite aspect?
 Region needs to be an input from the folder names
@@ -156,8 +161,14 @@ for d in "${DATA_PATH}"*/ ; do                        ##
 done
 
 
-This section is cool and I think I want to keep it in as a track o fwhen things complete/fail
-I do not think this section needs to be changed???
+
+
+
+
+
+
+
+####################
 
 ## This section checks to make sure all the previous batch jobs have completed
 
