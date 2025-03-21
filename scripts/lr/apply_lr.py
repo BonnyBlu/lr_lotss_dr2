@@ -6,6 +6,7 @@ import multiprocessing
 import pickle
 import os
 import sys
+import yaml
 import numpy as np
 from astropy.coordinates import SkyCoord, search_around_sky
 from astropy.table import Table, join, MaskedColumn
@@ -18,8 +19,8 @@ os.chdir(dir)                                   # Move to working/data directory
 if debug == True:
     print(os.getcwd())
 
-region = sys.argv[2]
-envfile = region+'.env'
+REGION = sys.argv[2]
+#envfile = region+'.env'
 
 try:
     BASEPATH = os.path.dirname(os.path.realpath(__file__))
@@ -32,30 +33,99 @@ except NameError:
         BASEPATH = os.getcwd()
         data_path = os.path.join(BASEPATH, "..", "..", "data")
 
+ROOTPATH = os.path.join(BASEPATH, "..", "..")
+config_path = os.path.join(ROOTPATH, "config")
 lr_path = os.path.join(data_path, "lr_outputs")
+idp = os.path.join(data_path, "lr_outputs", "idata")
+hp_path = os.path.join(data_path, "outputs", REGION)
+
 
 if debug == True:
     print(BASEPATH)
     print(data_path)
     print(lr_path)
+    print(idp)
+    print(hp_path)
 
 sys.path.append(os.path.join(BASEPATH, '..', '..', 'src'))
 from mltier1 import MultiMLEstimator, parallel_process, get_sigma_all
 
-load_dotenv(find_dotenv(envfile))
-COMBINED_DATA_PATH = data_path + os.getenv("COMBINED_DATA_PATH")
-PARAMS_PATH = lr_path + os.getenv("PARAMS_PATH")
-THRESHOLD = os.getenv("THRESHOLD")
-RADIO_CATALOGUE = data_path + os.getenv("RADIO_CATALOGUE")
-OUTPUT_RADIO_CATALOGUE = data_path + os.getenv("OUTPUT_CATALOGUE")
+# Configuration
+
+# Old version before using the .yml file for the inputs
+#load_dotenv(find_dotenv(envfile))
+#COMBINED_DATA_PATH = data_path + os.getenv("COMBINED_DATA_PATH")
+#PARAMS_PATH = lr_path + os.getenv("PARAMS_PATH")
+#THRESHOLD = os.getenv("THRESHOLD")
+#RADIO_CATALOGUE = data_path + os.getenv("RADIO_CATALOGUE")
+#OUTPUT_RADIO_CATALOGUE = data_path + os.getenv("OUTPUT_CATALOGUE")
 
 # Default config parameters
+#base_optical_catalogue = COMBINED_DATA_PATH
+#params = pickle.load(open(PARAMS_PATH, "rb"))
+#colour_limits = np.array([0.7, 1.2, 1.5, 2. , 2.4, 2.8, 3.1, 3.6, 4.1])
+#threshold = float(THRESHOLD)
+#max_major = 15
+#radius = 15
+
+# Using .yml input file
+with open(os.path.join(config_path, "inputs.yml"), "r") as ymlfile:
+    cfg_all = yaml.safe_load(ymlfile)
+
+lr_inputs = cfg_all.get("lr_inputs", {})
+
+gauss = lr_inputs['gaussian']
+nearest = lr_inputs['nearest']
+#hp_path = os.path.join(out_path, REGION)
+print(gauss)
+print(nearest)
+
+if (gauss, nearest) == (True, True):
+    print('Calculating the Likelihood Ratio for the nearest neighbours of the healpix regions of the Gaussian catalogue.')
+    print(f'Currently calculating region {REGION}')
+    PARAMS_PATH = os.path.join(idp, lr_inputs["params_name"]+'gauss_'+str(REGION[3:]), 'lofar_params_'+str(REGION)+'.pckl')
+    RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["gauss_in"]+'nn_'+str(REGION[3:]))
+    OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["gauss_in"]+'nn_lr_'+str(REGION[3:]))
+elif (gauss, nearest) == (True, False):
+    print('Calculating the Likelihood Ratio for the healpix regions of the Gaussian catalogue.')
+    print(f'Currently calculating region {REGION}')
+    PARAMS_PATH = os.path.join(idp, lr_inputs["params_name"]+'gauss_'+str(REGION[3:]), 'lofar_params_'+str(REGION)+'.pckl')
+    RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["gauss_in"]+str(REGION[3:]))
+    OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["gauss_in"]+'lr_'+str(REGION[3:]))
+elif (gauss, nearest) == (False, True):
+    print('Calculating the Likelihood Ratio for the nearest neighbours of the healpix regions of the radio catalogue.')
+    print(f'Currently calculating region {REGION}')
+    PARAMS_PATH = os.path.join(idp, lr_inputs["params_name"]+str(REGION[3:]), 'lofar_params_'+str(REGION)+'.pckl')
+    RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+'nn_'+str(REGION[3:]))
+    OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+'nn_lr_'+str(REGION[3:]))
+else:
+    print('Calculating the Likelihood Ratio for the healpix regions of the radio catalogue.')
+    print(f'Currently calculating region {REGION}')
+    PARAMS_PATH = os.path.join(idp, lr_inputs["params_name"]+str(REGION[3:]), 'lofar_params_'+str(REGION)+'.pckl')
+    RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+str(REGION[3:]))
+    OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+'lr_'+str(REGION[3:]))
+
+# Default config parameters
+COMBINED_DATA_PATH = os.path.join(hp_path, lr_inputs["opt_nn_in"]+str(REGION[3:]))
 base_optical_catalogue = COMBINED_DATA_PATH
-params = pickle.load(open(PARAMS_PATH, "rb"))
-colour_limits = np.array([0.7, 1.2, 1.5, 2. , 2.4, 2.8, 3.1, 3.6, 4.1])
-threshold = float(THRESHOLD)
-max_major = 15
-radius = 15
+#params = pickle.load(open(PARAMS_PATH, "rb"))
+#threshold = float(THRESHOLD)
+colour_limits_post = np.array(lr_inputs["colour_limits_post"])
+max_major = lr_inputs["max_major"]
+radius = lr_inputs['radius']
+
+
+print('PARAMS_PATH', PARAMS_PATH)
+print('RADIO_CATALOGUE', RADIO_CATALOGUE)
+print('OUTPUT_RADIO_CATALOGUE', OUTPUT_RADIO_CATALOGUE)
+print('base_optical_catalogue', base_optical_catalogue)
+#print('threshold', threshold)
+print('max_major', max_major)
+print('colour_limits_post', colour_limits_post)
+                  
+sys.exit('Testing the imports from the .yml file')
+
+
 
 # input_catalogue = os.path.join(
 #     os.path.join(data_path, "samples", "LoTSS_DR2_rolling.gaus_0h.fits"))

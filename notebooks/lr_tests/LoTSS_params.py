@@ -30,7 +30,6 @@ dir = sys.argv[1]                               # Working directory to change to
 os.chdir(dir)                                   # Move to working/data directory (should be bound to container)
 REGION = sys.argv[2]                            # Assign the hp region as an input
 
-gauss = False
 
 try:
     BASEPATH = os.path.dirname(os.path.realpath(__file__))
@@ -107,33 +106,66 @@ import matplotlib.pyplot as plt
 
 # Configuration
 
-with open(os.path.join(config_path, "params.yml"), "r") as ymlfile:
-    cfg_all = yaml.safe_load(ymlfile)
+# Old Version pre input file
+#with open(os.path.join(config_path, "params.yml"), "r") as ymlfile:
+#    cfg_all = yaml.safe_load(ymlfile)
 
-load_dotenv(find_dotenv())
+#load_dotenv(find_dotenv())
 #REGION='hp_666'       #hp_400 or g_400 if put in g_# need to unhash line 116 and change hp_# and comment out line 115
 #REGION = os.getenv("REGION")
-config = cfg_all[REGION]
+#config = cfg_all[REGION]
 
-if gauss == False:
-    print('Calculating radio source paramaters into params_###')
-    hp_path = os.path.join(out_path, REGION)
-else:
-    hp_path = os.path.join(out_path, 'hp_' + REGION[2:])   # WILL HAVE TO SORT THIS FOR GAUSSIANS
-    print('Calculating gaussian source parameters into params_gauss_###')
+#if gauss == False:
+#    print('Calculating radio source paramaters into params_###')
+#    hp_path = os.path.join(out_path, REGION)
+#else:
+#    hp_path = os.path.join(out_path, 'hp_' + REGION[2:])   # WILL HAVE TO SORT THIS FOR GAUSSIANS
+#    print('Calculating gaussian source parameters into params_gauss_###')
 
-if debug == True:
-    print(hp_path)
-region_name = config["region_name"]
+#if debug == True:
+#    print(hp_path)
+#region_name = config["region_name"]
 #radio_catalogue = os.path.join(data_path, config["radio_catalogue"])
 #combined_catalogue = os.path.join(data_path, config["combined_catalogue"])
-radio_catalogue = os.path.join(hp_path, config["radio_catalogue"])
-combined_catalogue = os.path.join(hp_path, config["combined_catalogue"])
-max_major = config["max_major"]
-colour_limits_post = np.array(config["colour_limits_post"])
+#radio_catalogue = os.path.join(hp_path, config["radio_catalogue"])
+#combined_catalogue = os.path.join(hp_path, config["combined_catalogue"])
+#max_major = config["max_major"]
+#colour_limits_post = np.array(config["colour_limits_post"])
 
-#print(radio_catalogue)
-#print(combined_catalogue)
+
+# Using .yml input file
+with open(os.path.join(config_path, "inputs.yml"), "r") as ymlfile:
+    cfg_all = yaml.safe_load(ymlfile)
+
+lr_inputs = cfg_all.get("lr_inputs", {})
+
+gauss = lr_inputs['gaussian']
+hp_path = os.path.join(out_path, REGION)
+print(gauss)
+
+if gauss == False:
+    print('Calculating radio source paramaters into params_'+str(REGION[3:]))
+    region_name = lr_inputs["params_name"]+str(REGION[3:])
+    radio_catalogue = os.path.join(hp_path, lr_inputs["rad_in"]+str(REGION[3:]))
+else:
+    print('Calculating gaussian source parameters into params_gauss_'+str(REGION[3:]))
+    region_name = lr_inputs["params_name"]+'gauss_'+str(REGION[3:])
+    radio_catalogue = os.path.join(hp_path, lr_inputs["gauss_in"]+str(REGION[3:]))
+
+if debug == True:
+    print('hp_path', hp_path)
+    print('region_name', region_name)
+
+combined_catalogue = os.path.join(hp_path, lr_inputs["opt_nn_in"]+str(REGION[3:]))
+max_major = lr_inputs["max_major"]
+colour_limits_post = np.array(lr_inputs["colour_limits_post"])
+
+print('radio_catalogue', radio_catalogue)
+print('combined_catalogue', combined_catalogue)
+print('max_major', max_major)
+print('colour_limits_post', colour_limits_post)
+                  
+sys.exit('Testing the imports from the .yml file')
 
 # General configuration
 
