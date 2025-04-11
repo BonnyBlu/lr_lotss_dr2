@@ -77,3 +77,4 @@ data/*
 notes.txt
 *.env
 reports/figures/examples*
+slurm-*

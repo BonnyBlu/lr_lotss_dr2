@@ -1,5 +1,6 @@
 # %% 
 debug = True
+log_out = True
 
 from glob import glob
 import multiprocessing
@@ -37,8 +38,8 @@ ROOTPATH = os.path.join(BASEPATH, "..", "..")
 config_path = os.path.join(ROOTPATH, "config")
 lr_path = os.path.join(data_path, "lr_outputs")
 idp = os.path.join(data_path, "lr_outputs", "idata")
-hp_path = os.path.join(data_path, "outputs", REGION)
-
+hp_path = os.path.join(data_path, "outputs_test", REGION)
+log_file = os.path.join(data_path, "outputs_test", "lr_outputs.yml")
 
 if debug == True:
     print(BASEPATH)
@@ -49,6 +50,54 @@ if debug == True:
 
 sys.path.append(os.path.join(BASEPATH, '..', '..', 'src'))
 from mltier1 import MultiMLEstimator, parallel_process, get_sigma_all
+
+'''
+Bonny's addition of logging the Error's and Outputs
+'''
+
+# Function to initialize the log file
+def initialize_log_file():
+    with open(log_file, "w") as f:
+        yaml.safe_dump({}, f)  # Start with an empty dictionary
+
+def log_outputs(region, error, details=None, threshold=None):
+    """
+    Function to log an error to the .yml file.
+
+    :param region: The region where the error/output occurs.
+    :param error: The type of error.
+    :param details: Any additional details to log.
+    :param threshold: A numeric threshold value (optional)
+    """
+    try:
+        # Load existing log data
+        with open(log_file, "r") as f:
+            log_data = yaml.safe_load(f) or {}
+
+        # Ensure the region exists in the log file
+        if region not in log_data:
+            log_data[region] = {"logs": []}  # Initialize with an empty list
+
+        # Append a new log entry
+        log_entry = {"error": error, "details": details if details else ""}
+        if threshold is not None and isinstance(threshold, np.floating):
+            log_entry["threshold"] = float(threshold)
+
+        log_data[region]["logs"].append(log_entry)
+
+        # Write updated log data back to the YAML file
+        with open(log_file, "w") as f:
+            yaml.safe_dump(log_data, f, default_flow_style=False)
+
+    except Exception as e:
+        print(f"Error logging output: {e}")
+
+
+'''
+End of additions, be sure to check code to remove/comment out
+the appropriate code lines.
+
+'''
 
 # Configuration
 
@@ -84,46 +133,63 @@ if (gauss, nearest) == (True, True):
     print('Calculating the Likelihood Ratio for the nearest neighbours of the healpix regions of the Gaussian catalogue.')
     print(f'Currently calculating region {REGION}')
     PARAMS_PATH = os.path.join(idp, lr_inputs["params_name"]+'gauss_'+str(REGION[3:]), 'lofar_params_'+str(REGION)+'.pckl')
-    RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["gauss_in"]+'nn_'+str(REGION[3:]))
-    OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["gauss_in"]+'nn_lr_'+str(REGION[3:]))
+    RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["gauss_in"]+'nn_'+str(REGION[3:])+'.fits')
+    OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["gauss_in"]+'nn_lr_'+str(REGION[3:])+'.fits')
 elif (gauss, nearest) == (True, False):
     print('Calculating the Likelihood Ratio for the healpix regions of the Gaussian catalogue.')
     print(f'Currently calculating region {REGION}')
     PARAMS_PATH = os.path.join(idp, lr_inputs["params_name"]+'gauss_'+str(REGION[3:]), 'lofar_params_'+str(REGION)+'.pckl')
-    RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["gauss_in"]+str(REGION[3:]))
-    OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["gauss_in"]+'lr_'+str(REGION[3:]))
+    RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["gauss_in"]+str(REGION[3:])+'.fits')
+    OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["gauss_in"]+'lr_'+str(REGION[3:])+'.fits')
 elif (gauss, nearest) == (False, True):
     print('Calculating the Likelihood Ratio for the nearest neighbours of the healpix regions of the radio catalogue.')
     print(f'Currently calculating region {REGION}')
     PARAMS_PATH = os.path.join(idp, lr_inputs["params_name"]+str(REGION[3:]), 'lofar_params_'+str(REGION)+'.pckl')
-    RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+'nn_'+str(REGION[3:]))
-    OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+'nn_lr_'+str(REGION[3:]))
+    RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+'nn_'+str(REGION[3:])+'.fits')
+    OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+'nn_lr_'+str(REGION[3:])+'.fits')
 else:
     print('Calculating the Likelihood Ratio for the healpix regions of the radio catalogue.')
     print(f'Currently calculating region {REGION}')
     PARAMS_PATH = os.path.join(idp, lr_inputs["params_name"]+str(REGION[3:]), 'lofar_params_'+str(REGION)+'.pckl')
-    RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+str(REGION[3:]))
-    OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+'lr_'+str(REGION[3:]))
+    RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+str(REGION[3:])+'.fits')
+    OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+'lr_'+str(REGION[3:])+'.fits')
+
+with open(os.path.join(data_path, "outputs_test", "lr_outputs.yml"), "r") as f:
+    logs = yaml.safe_load(f)
+
+
+try:
+    THRESHOLD = logs[REGION]["logs"][-1]["threshold"]
+except:
+    if log_out == True:
+        log_outputs(REGION, "ThresholdError", details = "The threshold was not calculated in the previous step and the LRs are not being calculated.")
+        raise SystemExit("Threshold was not calculated in the previous script and the LR calculation has been exited")
+
 
 # Default config parameters
-COMBINED_DATA_PATH = os.path.join(hp_path, lr_inputs["opt_nn_in"]+str(REGION[3:]))
+COMBINED_DATA_PATH = os.path.join(hp_path, lr_inputs["opt_nn_in"]+str(REGION[3:])+'.fits')
 base_optical_catalogue = COMBINED_DATA_PATH
-#params = pickle.load(open(PARAMS_PATH, "rb"))
-#threshold = float(THRESHOLD)
-colour_limits_post = np.array(lr_inputs["colour_limits_post"])
+params = pickle.load(open(PARAMS_PATH, "rb"))
+threshold = float(THRESHOLD)
+colour_limits = np.array(lr_inputs["colour_limits_post"])
 max_major = lr_inputs["max_major"]
 radius = lr_inputs['radius']
 
+if threshold == 0:
+    if log_out == True:
+        log_outputs(REGION, "ThresholdError", details = "The threshold has a value of Zero and the LRs have not been calculated.")
+        raise SystemExit("Threshold is equal to Zero and the LR calculation has been exited")
 
-print('PARAMS_PATH', PARAMS_PATH)
-print('RADIO_CATALOGUE', RADIO_CATALOGUE)
-print('OUTPUT_RADIO_CATALOGUE', OUTPUT_RADIO_CATALOGUE)
-print('base_optical_catalogue', base_optical_catalogue)
+
+#print('PARAMS_PATH', PARAMS_PATH)
+#print('RADIO_CATALOGUE', RADIO_CATALOGUE)
+#print('OUTPUT_RADIO_CATALOGUE', OUTPUT_RADIO_CATALOGUE)
+#print('base_optical_catalogue', base_optical_catalogue)
 #print('threshold', threshold)
-print('max_major', max_major)
-print('colour_limits_post', colour_limits_post)
+#print('max_major', max_major)
+#print('colour_limits_post', colour_limits_post)
                   
-sys.exit('Testing the imports from the .yml file')
+#sys.exit('Testing the imports from the .yml file')
 
 
 

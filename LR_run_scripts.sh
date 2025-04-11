@@ -34,8 +34,6 @@ other jobs can also use the cpus on the same node
 
 WORKING_DIR=$1			                ## The path to the output directory must contain /data folder		
 REGION=$2		                        ## The inputted region name will be of the form HP_###
-INPUT_FILE=$3			                ## The file which holds the input data needed for the pipeline
-OUTPUT_FILE=lr_thresholds.yml			## The file to store the intermediate outputs
 LOG_FILE=lr_errors.yml 	                ## The place where failed likelihood ratios record is stored
 
 ####################
@@ -64,13 +62,9 @@ Help()
                 that is inputted into the scripts this will come from the name of 
                 the input folders and is the main variable by which the scripts 
                 search and save the data under.
-    - Arg 3:    This has to be manually inputted by the user and is the main file
-                which contains all the input information for the pipeline. This is 
-                currently a .yml file.
-    - Arg 4:    This is currently set to lr_threshold.yml and stores the 
-                intermediatory outputs from LoTSS_params.py to use in apply_lr.py.
-    - Arg 5:    This is currently set to lr_errors.yml and is used to store the 
-                errors from apply_lr.py.
+    - Arg 3:    This is currently set to lr_errors.yml and is used to store the 
+                errors from apply_lr.py. Will need to be added as an arguement if you
+                want to change the name.
 
                                 ** NOTES ** 
    
@@ -147,57 +141,65 @@ done
 ## This code will run both the scripts required for the  likelihood ratio one after the other
 ## using the input file, an intermediate save file, and the output file.
 
+# This section will call the inputs from the .yaml file, this will tell the script whether it is dealing with gaussians/nearest
+# neighbours, and if both the first and second scripts need running.
 
-Do I need something here that checks to see if the parameters need to be calculated? 
-Is this going to be in the inputs file?
+eval $(./config/call_yaml.py config/inputs.yml lr_inputs gaussian nearest thres_calc apply_calc)
 
-Therefore this will be an if parameters are to be calculated run this file
-else run only the second file.
+echo "Calculating the Gaussians: $GAUSSIAN"
+echo "Calculating the nearest neighbours: $NEAREST"
+echo "Calculating the thresholds: $THRES_CALC"
+echo "Calculating the final LRs: $APPLY_CALC"
 
-Therefore how do I pull out the True/False from the .yml file?
+#exit
 
-Also need to have calls for if I am doing the Gaussians and the nearest neighbours?
+# If the thresholds are to be calculated: $THRES_CALC == True
 
-
-## To run the LoTSS_params.py file
-
-#cd /project/repos/lr_lotss_dr2/notebooks/lr_tests         # Change to the directory which contains the script
-
-# This runs the script from within the directory given and is the pathway inside the container. Need to change this to the correct directory once the scripts are stored in the container.
-
-## Need to add the input file once adapted the script to take an input file
-## will need to give an output file, and therefore take an intermediatory output file name??
+if [ "$THRES_CALC" = "True" ]; then
+    echo "The thresholds and parameters are being calculated for ${REGION}. This will overwrite the previous details"
 
 ## NOTE ##
 
 # This line will change once the container has been changed to include the scripts inside it.
 # In which case it will be fine to hardcode the location of the script as it will be inside the container
 
+#cd /project/repos/lr_lotss_dr2/notebooks/lr_tests        # Change to the directory which contains the script
 
-python /project/repos/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}           
+python /project/repos/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}
 
+python /project/repos/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}
 
-## To run the apply_lr.py file
-
-
-
-Need to set up the output.yml file from the above script to be a dictionary form 
-Therefore need work out how to find and call the threshold as an input in to this script?
-
-
-#cd /project/repos/lr_lotss_dr2/scripts/lr        # Change to the directory which contains the script
-
-# This runs the script from within the directory given and is the pathway inside the container. Need to change this to the correct directory once the scripts are stored in the container.
-
-## Need to add the input file once adapted the script to take an input file - probably need to adapt to take two input files, one for the generic inputs and one for the thresholds
-## Will need to give an output file of errors, and therefore will need to give an output file name.
+else
+    echo "The thresholds and parameters are not being calculated for ${REGION}."
 
 ## NOTE ##
 
 # This line will change once the code is stored inside the container.
 # In which case it will also be okay to hardcode the pathway to the script.
 
+#cd /project/repos/lr_lotss_dr2/scripts/lr        # Change to the directory which contains the script
+
 python /project/repos/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}  
+
+fi
+
+exit
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

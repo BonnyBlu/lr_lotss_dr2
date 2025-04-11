@@ -12,6 +12,9 @@
 
 # ### Load libraries and setup
 debug = True
+log_out = True
+batch_out = True
+var_err = 0        # This is counting the number of errors on q_r, w1 and w2 if this comes to 2 or more with a value of 1 or errored then the script will exit with no params calculated.
 
 import pickle
 import os
@@ -25,6 +28,7 @@ from astropy.coordinates import SkyCoord, search_around_sky
 import yaml
 from dotenv import load_dotenv, find_dotenv
 from IPython.display import clear_output
+from datetime import datetime
 
 dir = sys.argv[1]                               # Working directory to change to and run the code from
 os.chdir(dir)                                   # Move to working/data directory (should be bound to container)
@@ -45,8 +49,9 @@ except NameError as e:
 data_path = os.path.join(ROOTPATH, "data")
 src_path = os.path.join(ROOTPATH, "src")
 config_path = os.path.join(ROOTPATH, "config")
-out_path = os.path.join(data_path, "outputs")
-log_file = os.path.join(out_path, "outputs.yml")
+out_path = os.path.join(data_path, "outputs_test")
+log_file = os.path.join(out_path, "lr_outputs.yml")
+
 
 '''
 Bonny's addition of logging the Error's and Outputs
@@ -55,32 +60,42 @@ Bonny's addition of logging the Error's and Outputs
 # Function to initialize the log file
 def initialize_log_file():
     with open(log_file, "w") as f:
-        f.write("")  # Clear the file
+        yaml.safe_dump({}, f)  # Start with an empty dictionary
 
-def log_outputs(region, error, details=None):
+def log_outputs(region, error, details=None, threshold=None):
     """
     Function to log an error to the .yml file.
 
     :param region: The region where the error/output occurs.
     :param error: The type of error.
     :param details: Any additional details to log.
+    :param threshold: A numeric threshold value (optional)
     """
-    log_entry = f"{region}, \"{error}\""
-    if details:
-        log_entry += f", \"{details}\""
+    try:
+        # Load existing log data
+        with open(log_file, "r") as f:
+            log_data = yaml.safe_load(f) or {}
 
-    # Append the log entry to the .yml file
-    with open(log_file, "a") as f:
-        f.write(log_entry + "\n")  # Write each entry on a new line
+        # Ensure the region exists in the log file
+        if region not in log_data:
+            log_data[region] = {"logs": []}  # Initialize with an empty list
 
-log_out = True
+        # Append a new log entry
+        log_entry = {"error": error, "details": details if details else ""}
+        if threshold is not None and isinstance(threshold, np.floating):
+            log_entry["threshold"] = float(threshold)
 
-batch_out = True
+        log_data[region]["logs"].append(log_entry)
 
-if batch_out == False:
-    # Initialize the log file at the start of the program
+        # Write updated log data back to the YAML file
+        with open(log_file, "w") as f:
+            yaml.safe_dump(log_data, f, default_flow_style=False)
+
+    except Exception as e:
+        print(f"Error logging output: {e}")
+
+if not batch_out:   
     initialize_log_file()
-
 
 '''
 End of additions, be sure to check code to remove/comment out
@@ -146,26 +161,26 @@ print(gauss)
 if gauss == False:
     print('Calculating radio source paramaters into params_'+str(REGION[3:]))
     region_name = lr_inputs["params_name"]+str(REGION[3:])
-    radio_catalogue = os.path.join(hp_path, lr_inputs["rad_in"]+str(REGION[3:]))
+    radio_catalogue = os.path.join(hp_path, lr_inputs["rad_in"]+str(REGION[3:])+'.fits')
 else:
     print('Calculating gaussian source parameters into params_gauss_'+str(REGION[3:]))
     region_name = lr_inputs["params_name"]+'gauss_'+str(REGION[3:])
-    radio_catalogue = os.path.join(hp_path, lr_inputs["gauss_in"]+str(REGION[3:]))
+    radio_catalogue = os.path.join(hp_path, lr_inputs["gauss_in"]+str(REGION[3:])+'.fits')
 
 if debug == True:
     print('hp_path', hp_path)
     print('region_name', region_name)
 
-combined_catalogue = os.path.join(hp_path, lr_inputs["opt_nn_in"]+str(REGION[3:]))
+combined_catalogue = os.path.join(hp_path, lr_inputs["opt_nn_in"]+str(REGION[3:])+'.fits')
 max_major = lr_inputs["max_major"]
 colour_limits_post = np.array(lr_inputs["colour_limits_post"])
 
-print('radio_catalogue', radio_catalogue)
-print('combined_catalogue', combined_catalogue)
-print('max_major', max_major)
-print('colour_limits_post', colour_limits_post)
+#print('radio_catalogue', radio_catalogue)
+#print('combined_catalogue', combined_catalogue)
+#print('max_major', max_major)
+#print('colour_limits_post', colour_limits_post)
                   
-sys.exit('Testing the imports from the .yml file')
+#sys.exit('Testing the imports from the .yml file')
 
 # General configuration
 
@@ -466,8 +481,11 @@ if Q0_r is None:
                 )
             )
         except ValueError:
+            if debug == True:
+                var_err += 1
+                print("Error in Q0_r. Variable error is now:", var_err)
             if log_out == True:
-                log_outputs(REGION, "ValueError", "Error occurred in printing the Q0_r values")
+                log_outputs(REGION, "ValueError", details = "Error occurred in printing the Q0_r values")
             continue
     if save_intermediate:
         np.savez_compressed(
@@ -490,11 +508,11 @@ if Q0_r is None:
     Q0_r = q_0_rad_r[4]
 
 if Q0_r == 0:
-    log_outputs(REGION, "ValueError", "Q0_r is zero")
+    log_outputs(REGION, "ValueError", details = "Q0_r is zero")
     raise SystemExit("Q0_r is zero; logging and exiting this run")
 
 if np.isnan(Q0_r):
-    log_outputs(REGION, "ValueError", "Q0_r is NAN")
+    log_outputs(REGION, "ValueError", details = "Q0_r is NAN")
     raise SystemExit("Q0_r is NAN; logging and exiting this run")
 
 print('Q0_r',Q0_r)
@@ -564,14 +582,17 @@ n_m_w1 = get_n_m_kde(catalogue_w1["MAG_W1"], center_w1, field.area, bandwidth=ba
 #plt.plot(center_w1, np.cumsum(n_m_w1));
 
 if debug == True:
-    print('Calculating n_m_w1 kde')
-
-q_m_w1 = estimate_q_m_kde(catalogue_w1["MAG_W1"], 
-                      center_w1, 
-                      n_m_w1, coords_lofar, 
-                      coords_combined[combined_wise], 
-                      radius=5, 
-                      bandwidth=bandwidth_w1)
+    print('Calculating q_m_w1 kde')
+    try:
+        q_m_w1 = estimate_q_m_kde(catalogue_w1["MAG_W1"], 
+                              center_w1, 
+                              n_m_w1, coords_lofar, 
+                              coords_combined[combined_wise], 
+                              radius=5, 
+                              bandwidth=bandwidth_w1)
+    except ValueError:
+        if log_out == True:
+            log_outputs(REGION, "ValueError", details = "Error occurred in calculating q_m_w1 - zero value in array")
 
 # Commented out because plots are not needed right now #
 #plt.plot(center_w1, np.cumsum(q_m_w1));
@@ -600,14 +621,17 @@ n_m_w2 = get_n_m_kde(catalogue_w2["MAG_W2"], center_w2, field.area, bandwidth=ba
 #plt.plot(center_w2, np.cumsum(n_m_w2));
 
 if debug == True:
-    print('Calculating n_m_w2 kde')
-
-q_m_w2 = estimate_q_m_kde(catalogue_w2["MAG_W2"], 
-                      center_w2, 
-                      n_m_w2, coords_lofar, 
-                      coords_combined[combined_wise2], 
-                      radius=5, 
-                      bandwidth=bandwidth_w2)
+    print('Calculating q_m_w2 kde')
+    try:
+        q_m_w2 = estimate_q_m_kde(catalogue_w2["MAG_W2"], 
+                              center_w2, 
+                              n_m_w2, coords_lofar, 
+                              coords_combined[combined_wise2], 
+                              radius=5, 
+                              bandwidth=bandwidth_w2)
+    except ValueError:
+        if log_out == True:
+            log_outputs(REGION, "ValueError", details = "Error occurred in calculating q_m_w2 - zero value in array")
 
 # Commented out because plots are not needed right now #
 #plt.plot(center_w2, np.cumsum(q_m_w2));
@@ -761,11 +785,25 @@ q_0_rad_w1 = []
 q_0_rad_w1_std = []
 for radius in rads:
     q_0_rad_aux = []
+
     for i in range(n_iter):
-        out = q_0_comp_w1(radius=radius)
-        q_0_rad_aux.append(out)
+        try:
+            out = q_0_comp_w1(radius=radius)
+            q_0_rad_aux.append(out)
+        except ZeroDivisionError:
+            if debug == True:
+                var_err += 1
+                print("Error in Q0_w1. Variable error is now:", var_err)
+                if var_err > 15:
+                    log_outputs(REGION, "Variable Error", details = "More than 2 varibles have errored constantly causing the calculation to exit.")
+                    raise SystemExit("The calculation of the variables have errored constantly; logging and exiting this run")
+            if log_out == True:
+                log_outputs(REGION, "ZeroDivisionError", details = "Threshold of r is equal to Zero. No q_0 on w1")
+        continue
     q_0_rad_w1.append(np.mean(q_0_rad_aux))
     q_0_rad_w1_std.append(np.std(q_0_rad_aux))
+
+
     
     try:
         print(
@@ -778,8 +816,14 @@ for radius in rads:
             )
         )
     except ValueError:
+        if debug == True:
+            var_err += 1
+            print("Error in Q0_w1. Variable error is now:", var_err)
+            if var_err > 15:
+                log_outputs(REGION, "Variable Error", details = "More than 2 varibles have errored constantly causing the calculation to exit.")
+                raise SystemExit("The calculation of the variables have errored constantly; logging and exiting this run")
         if log_out == True:
-            log_outputs(region, "ValueError", "Error occured in printing the Q0_w1 values")
+            log_outputs(REGION, "ValueError", details = "Error occured in printing the Q0_w1 values")
         continue
 
 q_0_rad_w1 = np.array(q_0_rad_w1)
@@ -797,8 +841,14 @@ q_0_rad_w1_std = np.array(q_0_rad_w1_std)
 Q0_w1 = q_0_rad_w1[4] #0.41136
 
 # Create the likelihood estimator and run
-
-likelihood_ratio_w1 = SingleMLEstimator(Q0_w1, n_m_w1, q_m_w1, center_w1)
+if debug == True:
+    print("calculating likelihood ratio w1")
+    
+try:
+    likelihood_ratio_w1 = SingleMLEstimator(Q0_w1, n_m_w1, q_m_w1, center_w1)
+except NameError:
+    if log_out == True:
+        log_outputs(REGION, "NameError", details = "LR w1 could not be calculated; value missing.")
 
 idx_lofar_w1, idx_i_w1, d2d_w1, d3d_w1 = search_around_sky(
     coords_lofar[subsample_w1], coords_combined[combined_wise], radius*u.arcsec)
@@ -835,6 +885,9 @@ def ml_w1(i):
               lr_0[chosen_index]]                                  # LR
     return result
 
+if debug == True:
+    print("Running parallel process on res_w1")
+
 res_w1 = parallel_process(idx_lofar_unique_w1, ml_w1, n_jobs=1)
 #res = Parallel(n_jobs=n_cpus)(delayed(ml_w1)(i) for i in tqdm_notebook(idx_lofar_unique))
 
@@ -854,7 +907,7 @@ try:
     threshold_w1 = np.percentile(lofar[subsample_w1]["lr_w1"], 100*(1 - Q0_w1))
 except ValueError:
     if log_out == True:
-        log_outputs(REGION, "ValueError", "Threshold of w1 is out of range")
+        log_outputs(REGION, "ValueError", details = "Threshold of w1 is out of range")
         raise SystemExit("Threshold of w1 is out of range of 0 - 100; logging and exiting this run")
 
 
@@ -903,8 +956,19 @@ q_0_rad_w2_std = []
 for radius in rads:
     q_0_rad_aux = []
     for i in range(n_iter):
-        out = q_0_comp_w2(radius=radius)
-        q_0_rad_aux.append(out)
+        try:
+            out = q_0_comp_w2(radius=radius)
+            q_0_rad_aux.append(out)
+        except ZeroDivisionError:
+            if debug == True:
+                var_err += 1
+                print("Error in Q0_w2. Variable error is now:", var_err)
+            if var_err > 15:
+                log_outputs(REGION, "Variable Error", details = "More than 2 varibles have errored constantly causing the calculation to exit.")
+                raise SystemExit("The calculation of the variables have errored constantly; logging and exiting this run")            
+            if log_out == True:
+                log_outputs(REGION, "ZeroDivisionError", details = "Threshold of r is equal to Zero. No q_0 on w2.")
+        continue
     q_0_rad_w2.append(np.mean(q_0_rad_aux))
     q_0_rad_w2_std.append(np.std(q_0_rad_aux))
     
@@ -919,8 +983,14 @@ for radius in rads:
             )
         )
     except ValueError:
+        if debug == True:
+            var_err += 1
+            print("Error in Q0_w2. Variable error is now:", var_err)
+            if var_err > 15:
+                log_outputs(REGION, "Variable Error", details = "More than 2 varibles have errored constantly causing the calculation to exit.")
+                raise SystemExit("The calculation of the variables have errored constantly; logging and exiting this run")        
         if log_out == True:
-            log_outputs(REGION, "ValueError", "Error occured in printing the Q0_w2 values")
+            log_outputs(REGION, "ValueError", details = "Error occured in printing the Q0_w2 values")
         continue
 
 q_0_rad_w2 = np.array(q_0_rad_w2)
@@ -938,6 +1008,7 @@ q_0_rad_w2_std = np.array(q_0_rad_w2_std)
 Q0_w2 = q_0_rad_w2[4] # 0.03364
 
 # Create the likelihood estimator and run
+
 
 likelihood_ratio_w2 = SingleMLEstimator(Q0_w2, n_m_w2, q_m_w2, center_w2)
 
@@ -968,15 +1039,16 @@ def ml_w2(i):
     sigma_0_0, det_sigma = get_sigma_all(lofar_maj_err, lofar_min_err, lofar_pa, 
                       lofar_ra, lofar_dec, 
                       c_ra, c_dec, c_ra_err, c_dec_err)
-    
-    lr_0 = likelihood_ratio_w2(mag, d2d_0.arcsec, sigma_0_0, det_sigma)
+    lr_0 = likelihood_ratio_w2(mag, d2d_0.arcsec, sigma_0_0, det_sigma)       
     chosen_index = np.argmax(lr_0)
     result = [combined_aux_index[combined_wise2][idx_0[chosen_index]], # Index
               (d2d_0.arcsec)[chosen_index],                        # distance
               lr_0[chosen_index]]                                  # LR
     return result
 
+
 res_w2 = parallel_process(idx_lofar_unique_w2, ml_w2, n_jobs=1)
+ 
 #res = Parallel(n_jobs=n_cpus)(delayed(ml_w2)(i) for i in tqdm_notebook(idx_lofar_unique))
 
 indices_w2 = np.arange(len(lofar))[subsample_w2][idx_lofar_unique_w2]
@@ -993,7 +1065,7 @@ try:
     threshold_w2 = np.percentile(lofar[subsample_w2]["lr_w2"], 100*(1 - Q0_w2))
 except ValueError:
     if log_out == True:
-        log_outputs(REGION, "ValueError", "Threshold of w2 is out of range")
+        log_outputs(REGION, "ValueError", details = "Threshold of w2 is out of range")
         raise SystemExit("Threshold of w2 is out of range of 0 - 100; logging and exiting this run")
     
 threshold_w2 # 0.015 before
@@ -1662,6 +1734,9 @@ if good:
 
 print('Final stored value of threshold is:', threshold)
 
+if debug == True:
+    print(f"Threshold type: {type(threshold)}")
+
 if log_out == True:
-    log_outputs(REGION, "Threshold", f"The final threshold value is: {threshold}")
+    log_outputs(REGION, "threshold", details = f"The final threshold value is: {threshold}", threshold = threshold)
 
