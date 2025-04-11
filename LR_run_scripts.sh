@@ -34,6 +34,7 @@ other jobs can also use the cpus on the same node
 
 WORKING_DIR=$1			                ## The path to the output directory must contain /data folder		
 REGION=$2		                        ## The inputted region name will be of the form HP_###
+SINGULARITY_PATH=$3                     ## The path to the singularity container
 LOG_FILE=lr_errors.yml 	                ## The place where failed likelihood ratios record is stored
 
 ####################
@@ -62,7 +63,8 @@ Help()
                 that is inputted into the scripts this will come from the name of 
                 the input folders and is the main variable by which the scripts 
                 search and save the data under.
-    - Arg 3:    This is currently set to lr_errors.yml and is used to store the 
+    - Arg 3:    This is the pathway to the singularity container that will run the LR.
+    - Arg 4:    This is currently set to lr_errors.yml and is used to store the 
                 errors from apply_lr.py. Will need to be added as an arguement if you
                 want to change the name.
 
@@ -165,9 +167,13 @@ if [ "$THRES_CALC" = "True" ]; then
 
 #cd /project/repos/lr_lotss_dr2/notebooks/lr_tests        # Change to the directory which contains the script
 
-python /project/repos/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}
+#python /project/repos/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}
 
-python /project/repos/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}
+#python /project/repos/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}
+
+singularity exec --bind "${WORKING_DIR}"  "${SINGULARITY_PATH}" python /project/repos/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}
+
+singularity exec --bind "${WORKING_DIR}"  "${SINGULARITY_PATH}" python /project/repos/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}
 
 else
     echo "The thresholds and parameters are not being calculated for ${REGION}."
@@ -179,7 +185,7 @@ else
 
 #cd /project/repos/lr_lotss_dr2/scripts/lr        # Change to the directory which contains the script
 
-python /project/repos/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}  
+singularity exec --bind "${WORKING_DIR}"  "${SINGULARITY_PATH}" python /project/repos/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}  
 
 fi
 

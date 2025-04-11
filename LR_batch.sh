@@ -6,9 +6,9 @@
 ## Paths and Arguments
 ####################
 
-OUT_DIR=$1			    ## The path to the healpix directory		
-WORKING_DIR=$2		    ## The path to the working directory
-#DATA_PATH=$3			## The path to the healpixs - unlikely to change
+OUT_DIR=$1			        ## The path to the healpix directory		
+WORKING_DIR=$2		        ## The path to the working directory
+SINGULARITY_PATH=$3			## The path to the singularity container
 
 ####################
 
@@ -110,7 +110,7 @@ for d in "${OUT_DIR}"/ ; do                          ##
 #        #ln -s "${SINGULARITY_PATH}" "${MOSAIC_DIR}ddf-tmp.sif"              ## Symlink to container - check name - If you want to use
 #        ln -s "${d}mosaic-blanked.fits" "${DATA_DIR}mosaic-blanked.fits"  ## Symlink to mosaic - check name
 #   
-        job_id=$(sbatch LR_run_scripts.sh "${WORKING_DIR}" "${d}" | awk '{print $4}') ##  This batches PyBDSF_Singularity and stores the job_id in the array
+        job_id=$(sbatch LR_run_scripts.sh "${WORKING_DIR}" "${d}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches PyBDSF_Singularity and stores the job_id in the array
         
 #        echo "Running ${DATA_DIR} with the following batch number: ${job_id}"    ##  This echos the directory the job is being run on
 #
