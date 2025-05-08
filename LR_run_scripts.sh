@@ -6,10 +6,6 @@
 ## Batching code
 ####################
 
-Need to check this batching code to make sure that this is 2 cpus on a single node and 
-other jobs can also use the cpus on the same node
-
-
 ## This batch set up runs one job on one node using 2 CPUs but not exclusively 
 ## so other jobs can run on this node. To change the number of CPUs used 
 ## change ntasks; to change/allocate memory then change mem. The output 
@@ -154,43 +150,23 @@ echo "Calculating the nearest neighbours: $NEAREST"
 echo "Calculating the thresholds: $THRES_CALC"
 echo "Calculating the final LRs: $APPLY_CALC"
 
-#exit
-
 # If the thresholds are to be calculated: $THRES_CALC == True
 
 if [ "$THRES_CALC" = "True" ]; then
     echo "The thresholds and parameters are being calculated for ${REGION}. This will overwrite the previous details"
 
-## NOTE ##
-
-# This line will change once the container has been changed to include the scripts inside it.
-# In which case it will be fine to hardcode the location of the script as it will be inside the container
-
-#cd /project/repos/lr_lotss_dr2/notebooks/lr_tests        # Change to the directory which contains the script
-
-#python /project/repos/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}
-
-#python /project/repos/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}
-
-    singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}
+    singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}
 
     echo "The thresholds and parameters have been calculated for ${REGION}. Continuing with the likelihood ratio calculation."
 
-    singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}
+    singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}
 
 #singularity exec --bind /project,/project/data/:/Documents/lr_lotss_dr2/data/ /project/LR/LRcontainer_new.sif python /Documents/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py /project hp_98
 
 else
     echo "The thresholds and parameters are not being calculated for ${REGION}. Continuing with the likelihood ratio calculation."
 
-## NOTE ##
-
-# This line will change once the code is stored inside the container.
-# In which case it will also be okay to hardcode the pathway to the script.
-
-#cd /project/repos/lr_lotss_dr2/scripts/lr        # Change to the directory which contains the script
-
-    singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}:/Documents/lr_lotss_dr2/data/"  "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}  
+    singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/"  "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}  
 
 #singularity exec --bind /project,/project/data/:/Documents/lr_lotss_dr2/data/ /project/LR/LRcontainer_new.sif python /Documents/lr_lotss_dr2/scripts/lr/apply_lr.py /project hp_98
 

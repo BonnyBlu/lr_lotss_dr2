@@ -6,9 +6,10 @@
 ## Paths and Arguments
 ####################
 
-OUT_DIR=$1			        ## The path to the healpix directory		
-WORKING_DIR=$2		        ## The path to the working directory
+WORKING_DIR=$1		        ## The path to the working directory
+OUT_DIR=$2			        ## The path to the healpix directory		
 SINGULARITY_PATH=$3			## The path to the singularity container
+LOG_FILE=LR_batch_log.log
 
 ####################
 
@@ -90,59 +91,24 @@ done
 
 job_ids=()                                              ##  Set up an empty array called job_ids to store the output job_ids
 
-for d in "${OUT_DIR}"/ ; do                          ##  
+shopt -s nullglob
 
-    echo ${d}
-#    DATA_DIR="${PYBDSF_DIR}$(basename ${d})/"
-#    #echo "${d}mosaic-blanked.fits" "${MOSAIC_DIR}mosaic-blanked.fits"
-#
-#    if [ -d "${DATA_DIR}" ] && [ -f "${DATA_DIR}mosaic-blanked--final.srl.fits" ]; then     ## Look for folder and final file
-#        echo "PyBDSF already completed on ${DATA_DIR}."                                       ## If there state it is complete
-#        
-#    elif [ -d "${DATA_DIR}" ] && [ ! -f "${DATA_DIR}mosaic-blanked--final.srl.fits" ]; then     ## Look for folder and not final file
-#
-#        echo "Clearing ${DATA_DIR} and creating new folder with symlinks"         ## State if this is the case and will clear it
-#    
-#        rm -r "${DATA_DIR}"           ## Clear folder and all contents
-#    
-#        mkdir "${DATA_DIR}"           ## Remake folder and symlinks - continue with batch
-#        
-#        #ln -s "${SINGULARITY_PATH}" "${MOSAIC_DIR}ddf-tmp.sif"              ## Symlink to container - check name - If you want to use
-#        ln -s "${d}mosaic-blanked.fits" "${DATA_DIR}mosaic-blanked.fits"  ## Symlink to mosaic - check name
-#   
-        job_id=$(sbatch LR_run_scripts.sh "${WORKING_DIR}" "${d}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches PyBDSF_Singularity and stores the job_id in the array
-        
-#        echo "Running ${DATA_DIR} with the following batch number: ${job_id}"    ##  This echos the directory the job is being run on
-#
-        job_ids+=("${job_id}")
+dirs=(${OUT_DIR}/*/)
 
-#    elif [ ! -d "${DATA_DIR}" ]; then                 ## Check if folder does not exist
-#
-#        echo "Creating ${DATA_DIR} with symlinks"     ## Stating will make folder and symlinks
-#
-#        mkdir "${DATA_DIR}"                           ## Creates folder - continues with batch
-#    
-#        #ln -s "${SINGULARITY_PATH}" "${MOSAIC_DIR}ddf-tmp.sif"              ## Symlink to container - check name - if you want to use
-#        ln -s "${d}mosaic-blanked.fits" "${DATA_DIR}mosaic-blanked.fits"  ## Symlink to mosaic - check name    
-#   
-#        job_id=$(sbatch PyBDSF_Singularity.sh "${DATA_DIR}" "${DATA_PATH}" "${SINGULARITY_PATH}" | awk '{print $4}') ##  This batches PyBDSF_Singularity and stores the job_id in the array
-#     
-#        echo "Running ${DATA_DIR} with the following batch number: ${job_id}"    ##  This echos the directory the job is being run on
-#        
-#        job_ids+=("${job_id}")
+if [ ${#dirs[@]} -eq 0 ]; then
+    echo "No subdirectories found in ${OUT_DIR}"
+    exit 1
+fi
+
+for d in "${dirs[@]}" ; do                          ##  
+
+    echo "Submitting job for directory: ${d}"
+   
+    job_id=$(sbatch LR_run_scripts.sh "${WORKING_DIR}" "${d}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches PyBDSF_Singularity and stores the job_id in the array
         
-        #echo "${job_ids}"
-        
-#    fi     
-     
+    job_ids+=("${job_id}")
+      
 done
-
-
-exit
-
-
-
-
 
 
 ####################
@@ -206,7 +172,7 @@ while true; do
     
     
     echo "Entering Sleep"
-    sleep 300                                           ##  Check every 5 minutes
+    sleep 10                                           ##  Check every 5 minutes
     echo "Finished Sleep"
 
 done

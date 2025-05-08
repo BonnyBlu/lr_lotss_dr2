@@ -52,6 +52,9 @@ config_path = os.path.join(ROOTPATH, "config")
 out_path = os.path.join(data_path, "outputs_test")
 log_file = os.path.join(out_path, "lr_outputs.yml")
 
+print('outpath is', outpath)
+print('logfile is', log_file)
+
 
 '''
 Bonny's addition of logging the Error's and Outputs

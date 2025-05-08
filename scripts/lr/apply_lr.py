@@ -92,7 +92,6 @@ def log_outputs(region, error, details=None, threshold=None):
     except Exception as e:
         print(f"Error logging output: {e}")
 
-
 '''
 End of additions, be sure to check code to remove/comment out
 the appropriate code lines.
@@ -352,6 +351,6 @@ pwl["RA_2"].name = "ra"
 pwl["DEC_2"].name = "dec"
 pwl["RA_1"].name = "RA"
 pwl["DEC_1"].name = "DEC"
-pwl.filled().write(output_catalogue, format="fits")
+pwl.filled().write(output_catalogue, format="fits", overwrite=True)
 
     

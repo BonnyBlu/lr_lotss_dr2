@@ -78,3 +78,5 @@ notes.txt
 *.env
 reports/figures/examples*
 slurm-*
+logs/*
+*.log
