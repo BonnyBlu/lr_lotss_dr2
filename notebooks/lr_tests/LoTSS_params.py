@@ -175,10 +175,10 @@ combined_catalogue = os.path.join(hp_path, lr_inputs["opt_nn_in"]+str(REGION[3:]
 max_major = lr_inputs["max_major"]
 colour_limits_post = np.array(lr_inputs["colour_limits_post"])
 
-#print('radio_catalogue', radio_catalogue)
-#print('combined_catalogue', combined_catalogue)
-#print('max_major', max_major)
-#print('colour_limits_post', colour_limits_post)
+print('radio_catalogue', radio_catalogue)
+print('combined_catalogue', combined_catalogue)
+print('max_major', max_major)
+print('colour_limits_post', colour_limits_post)
                   
 #sys.exit('Testing the imports from the .yml file')
 

@@ -102,9 +102,11 @@ fi
 
 for d in "${dirs[@]}" ; do                          ##  
 
-    echo "Submitting job for directory: ${d}"
+    REGION=$(basename "${d}")
+
+    echo "Submitting job for directory: ${REGION}"
    
-    job_id=$(sbatch LR_run_scripts.sh "${WORKING_DIR}" "${d}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches PyBDSF_Singularity and stores the job_id in the array
+    job_id=$(sbatch LR_run_scripts.sh "${WORKING_DIR}" "${REGION}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches PyBDSF_Singularity and stores the job_id in the array
         
     job_ids+=("${job_id}")
       
