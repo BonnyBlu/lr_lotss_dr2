@@ -173,7 +173,7 @@ else:
     RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+str(REGION[3:])+'.fits')
     OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+'lr_'+str(REGION[3:])+'.fits')
 
-with open(log_path, "r") as f:
+with open(log_file, "r") as f:
     logs = yaml.safe_load(f)
 
 try:
