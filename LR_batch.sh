@@ -127,8 +127,13 @@ while true; do
         echo "Setting status"
         ## Fetch job status awk filters out lines containing COMPLETED and dashes (with any number of spaces). gsub strips leading spaces. Prints the first field, and the first line if more than one.
         status=$(sacct -j "${job_id}" --format=State --noheader | awk '!/COMPLETED|^[[:space:]]*--+[[:space:]]*$/{gsub(/^[[:space:]]+/, ""); print $1}' | head -n 1)
-        #echo "${status}"
-        #echo "${LOG_FILE}"
+
+        ## Checking to see if it has an empty status
+        if [[ -z "${status}" ]]; then
+            echo "Job ${job_id} has no status information (likely completed or purged from sacct). Assuming completed." >> "${LOG_FILE}"
+            continue
+        fi
+
         echo "Checking status of ${job_id}: ${status}"
         case "${status}" in
            

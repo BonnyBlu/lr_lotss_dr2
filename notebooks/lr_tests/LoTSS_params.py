@@ -50,7 +50,32 @@ data_path = os.path.join(ROOTPATH, "data")
 src_path = os.path.join(ROOTPATH, "src")
 config_path = os.path.join(ROOTPATH, "config")
 out_path = os.path.join(data_path, "outputs_test")
-log_file = os.path.join(out_path, "lr_outputs.yml")
+#log_file = os.path.join(out_path, "lr_outputs.yml")        # If the different log files are not needed this line can be used instead of the section below
+
+# Using .yml input file
+with open(os.path.join(config_path, "inputs.yml"), "r") as ymlfile:
+    cfg_all = yaml.safe_load(ymlfile)
+
+lr_inputs = cfg_all.get("lr_inputs", {})
+
+gauss = lr_inputs['gaussian']
+hp_path = os.path.join(out_path, REGION)
+print('gaussian set to', gauss)
+
+# This changes the name of the outputs file so that the thresholds can be obtained for each lr calculation
+# This can be commented out if different log files to collect the thresholds are not needed
+suffix = ""
+
+if gauss:
+    suffix += "_gauss"
+else:
+    suffix += "_radio"
+
+if lr_inputs.get("nearest", False):
+    suffix += "_nn"
+
+# Construct the log file name
+log_file = os.path.join(out_path, f"lr_outputs{suffix}.yml")
 
 
 '''
@@ -94,12 +119,13 @@ def log_outputs(region, error, details=None, threshold=None):
     except Exception as e:
         print(f"Error logging output: {e}")
 
-if batch_out:
+if not batch_out:                    #If not batching makes a new empty file each time, so you can see the output of each run (debugging)
     initialize_log_file()
 else:
-    # If not batching, ensure the log file exists before continuing
+    # Checks if the log file exists when batching and makes it if not
     if not os.path.exists(log_file):
-        raise FileNotFoundError(f"Expected existing log file not found at {log_file}")
+        with open(log_file, "w") as f:
+            yaml.safe_dump({}, f)
 
 '''
 End of additions, be sure to check code to remove/comment out
@@ -151,16 +177,6 @@ import matplotlib.pyplot as plt
 #max_major = config["max_major"]
 #colour_limits_post = np.array(config["colour_limits_post"])
 
-
-# Using .yml input file
-with open(os.path.join(config_path, "inputs.yml"), "r") as ymlfile:
-    cfg_all = yaml.safe_load(ymlfile)
-
-lr_inputs = cfg_all.get("lr_inputs", {})
-
-gauss = lr_inputs['gaussian']
-hp_path = os.path.join(out_path, REGION)
-print(gauss)
 
 if gauss == False:
     print('Calculating radio source paramaters into params_'+str(REGION[3:]))
