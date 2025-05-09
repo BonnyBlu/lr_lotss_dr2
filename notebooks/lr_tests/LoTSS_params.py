@@ -33,7 +33,7 @@ from datetime import datetime
 dir = sys.argv[1]                               # Working directory to change to and run the code from
 os.chdir(dir)                                   # Move to working/data directory (should be bound to container)
 REGION = sys.argv[2]                            # Assign the hp region as an input
-
+config_path = os.path.join(dir, 'config')
 
 try:
     BASEPATH = os.path.dirname(os.path.realpath(__file__))
@@ -48,7 +48,7 @@ except NameError as e:
 
 data_path = os.path.join(ROOTPATH, "data")
 src_path = os.path.join(ROOTPATH, "src")
-config_path = os.path.join(ROOTPATH, "config")
+#config_path = os.path.join(ROOTPATH, "config")
 out_path = os.path.join(data_path, "outputs_test")
 #log_file = os.path.join(out_path, "lr_outputs.yml")        # If the different log files are not needed this line can be used instead of the section below
 
