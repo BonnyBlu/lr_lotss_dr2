@@ -94,8 +94,12 @@ def log_outputs(region, error, details=None, threshold=None):
     except Exception as e:
         print(f"Error logging output: {e}")
 
-if not batch_out:   
+if batch_out:
     initialize_log_file()
+else:
+    # If not batching, ensure the log file exists before continuing
+    if not os.path.exists(log_file):
+        raise FileNotFoundError(f"Expected existing log file not found at {log_file}")
 
 '''
 End of additions, be sure to check code to remove/comment out
