@@ -75,7 +75,7 @@ log_file = os.path.join(data_path, "outputs_test", f"lr_outputs{suffix}.yml")
 if debug == True:
     print(BASEPATH)
     print(data_path)
-    print(lr_path)
+    print(log_path)
     print(idp)
     print(hp_path)
 
