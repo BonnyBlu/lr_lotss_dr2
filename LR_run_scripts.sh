@@ -143,7 +143,7 @@ done
 # This section will call the inputs from the .yaml file, this will tell the script whether it is dealing with gaussians/nearest
 # neighbours, and if both the first and second scripts need running.
 
-eval $(./config/call_yaml.py config/inputs.yml lr_inputs gaussian nearest thres_calc apply_calc)
+eval "$(${WORKING_DIR}/config/call_yaml.py ${WORKING_DIR}/config/inputs.yml lr_inputs gaussian nearest thres_calc apply_calc)"
 
 echo "Calculating the Gaussians: $GAUSSIAN"
 echo "Calculating the nearest neighbours: $NEAREST"
