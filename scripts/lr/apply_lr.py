@@ -35,7 +35,7 @@ except NameError:
         data_path = os.path.join(BASEPATH, "..", "..", "data")
 
 ROOTPATH = os.path.join(BASEPATH, "..", "..")
-config_path = os.path.join(ROOTPATH, "config")
+config_path = os.path.join(dir, "config")
 #lr_path = os.path.join(data_path, "lr_outputs")
 idp = os.path.join(data_path, "lr_outputs", "idata")
 hp_path = os.path.join(data_path, "outputs_test", REGION)
@@ -75,7 +75,7 @@ log_file = os.path.join(data_path, "outputs_test", f"lr_outputs{suffix}.yml")
 if debug == True:
     print(BASEPATH)
     print(data_path)
-    print(log_path)
+    print(config_path)
     print(idp)
     print(hp_path)
 
