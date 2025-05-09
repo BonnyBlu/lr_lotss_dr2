@@ -36,10 +36,41 @@ except NameError:
 
 ROOTPATH = os.path.join(BASEPATH, "..", "..")
 config_path = os.path.join(ROOTPATH, "config")
-lr_path = os.path.join(data_path, "lr_outputs")
+#lr_path = os.path.join(data_path, "lr_outputs")
 idp = os.path.join(data_path, "lr_outputs", "idata")
 hp_path = os.path.join(data_path, "outputs_test", REGION)
-log_file = os.path.join(data_path, "outputs_test", "lr_outputs.yml")
+#log_file = os.path.join(data_path, "outputs_test", "lr_outputs.yml")
+
+# Using .yml input file
+with open(os.path.join(config_path, "inputs.yml"), "r") as ymlfile:
+    cfg_all = yaml.safe_load(ymlfile)
+
+lr_inputs = cfg_all.get("lr_inputs", {})
+
+gauss = lr_inputs['gaussian']
+nearest = lr_inputs['nearest']
+#hp_path = os.path.join(out_path, REGION)
+#print(gauss)
+#print(nearest)
+
+# Using .yml input file
+print('gaussian set to', gauss)
+
+# This changes the name of the outputs file so that the thresholds can be obtained for each lr calculation
+# This can be commented out if different log files to collect the thresholds are not needed
+suffix = ""
+
+if gauss:
+    suffix += "_gauss"
+else:
+    suffix += "_radio"
+
+if lr_inputs.get("nearest", False):
+    suffix += "_nn"
+
+# Construct the log file name
+log_file = os.path.join(out_path, f"lr_outputs{suffix}.yml")
+lr_path = os.path.join(data_path, 'outputs_test', f"lr_outputs{suffix}.yml")
 
 if debug == True:
     print(BASEPATH)
@@ -116,17 +147,6 @@ the appropriate code lines.
 #max_major = 15
 #radius = 15
 
-# Using .yml input file
-with open(os.path.join(config_path, "inputs.yml"), "r") as ymlfile:
-    cfg_all = yaml.safe_load(ymlfile)
-
-lr_inputs = cfg_all.get("lr_inputs", {})
-
-gauss = lr_inputs['gaussian']
-nearest = lr_inputs['nearest']
-#hp_path = os.path.join(out_path, REGION)
-print(gauss)
-print(nearest)
 
 if (gauss, nearest) == (True, True):
     print('Calculating the Likelihood Ratio for the nearest neighbours of the healpix regions of the Gaussian catalogue.')
@@ -153,7 +173,7 @@ else:
     RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+str(REGION[3:])+'.fits')
     OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+'lr_'+str(REGION[3:])+'.fits')
 
-with open(os.path.join(data_path, "outputs_test", "lr_outputs.yml"), "r") as f:
+with open(lr_path, "r") as f:
     logs = yaml.safe_load(f)
 
 
