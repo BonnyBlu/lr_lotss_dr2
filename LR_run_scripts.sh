@@ -147,30 +147,47 @@ echo "Calculating the Gaussians: $GAUSSIAN"
 echo "Calculating the nearest neighbours: $NEAREST"
 echo "Calculating the thresholds: $THRES_CALC"
 echo "Calculating the final LRs: $APPLY_CALC"
+echo "Thresholds are stored in: $PARAMS_NAME"
 
-# If the thresholds are to be calculated: $THRES_CALC == True
+# Compute region suffix (e.g., '099' from 'hp_099')
+REGION_SUFFIX="${REGION:3}"
+
+# Set PARAMS_OUTPUT_DIR based on GAUSSIAN
+if [ "$GAUSSIAN" = "True" ]; then
+    PARAMS_OUTPUT_DIR="/data/lr_outputs/idata/${PARAMS_NAME}gauss_${REGION_SUFFIX}"
+else
+    PARAMS_OUTPUT_DIR="/data/lr_outputs/idata/${PARAMS_NAME}${REGION_SUFFIX}"
+fi
+
 
 if [ "$THRES_CALC" = "True" ]; then
-    echo "The thresholds and parameters are being calculated for ${REGION}. This will overwrite the previous details"
+    echo "The thresholds and parameters are being calculated for ${REGION}. This will overwrite the previous details."
 
     singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}
 
-    echo "The thresholds and parameters have been calculated for ${REGION}. Continuing with the likelihood ratio calculation."
+    if [ "$APPLY_CALC" = "True" ]; then
+        echo "Continuing with the likelihood ratio calculation."
+
+        singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}
+    fi
+
+elif [ "$APPLY_CALC" = "True" ]; then
+    if [ ! -d "$PARAMS_OUTPUT_DIR" ]; then
+        echo "Threshold parameters directory (${PARAMS_OUTPUT_DIR}) not found. Calculating thresholds first."
+
+        singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}
+    fi
+
+    echo "Continuing with the likelihood ratio calculation."
 
     singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}
 
-#singularity exec --bind /project,/project/data/:/Documents/lr_lotss_dr2/data/ /project/LR/LRcontainer_new.sif python /Documents/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py /project hp_98
-
 else
-    echo "The thresholds and parameters are not being calculated for ${REGION}. Continuing with the likelihood ratio calculation."
-
-    singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/"  "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}  
-
-#singularity exec --bind /project,/project/data/:/Documents/lr_lotss_dr2/data/ /project/LR/LRcontainer_new.sif python /Documents/lr_lotss_dr2/scripts/lr/apply_lr.py /project hp_98
-
+    echo "Neither threshold nor likelihood ratio calculation is requested. Exiting."
 fi
 
 exit
+
 
 
 

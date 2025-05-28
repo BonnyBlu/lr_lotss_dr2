@@ -49,7 +49,7 @@ except NameError as e:
 data_path = os.path.join(ROOTPATH, "data")
 src_path = os.path.join(ROOTPATH, "src")
 #config_path = os.path.join(ROOTPATH, "config")
-out_path = os.path.join(data_path, "outputs_test")
+out_path = os.path.join(data_path, "outputs")
 #log_file = os.path.join(out_path, "lr_outputs.yml")        # If the different log files are not needed this line can be used instead of the section below
 
 # Using .yml input file

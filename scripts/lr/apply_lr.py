@@ -38,8 +38,8 @@ ROOTPATH = os.path.join(BASEPATH, "..", "..")
 config_path = os.path.join(dir, "config")
 #lr_path = os.path.join(data_path, "lr_outputs")
 idp = os.path.join(data_path, "lr_outputs", "idata")
-hp_path = os.path.join(data_path, "outputs_test", REGION)
-#log_file = os.path.join(data_path, "outputs_test", "lr_outputs.yml")
+hp_path = os.path.join(data_path, "outputs", REGION)
+#log_file = os.path.join(data_path, "outputs", "lr_outputs.yml")
 
 # Using .yml input file
 with open(os.path.join(config_path, "inputs.yml"), "r") as ymlfile:
@@ -69,8 +69,8 @@ if lr_inputs.get("nearest", False):
     suffix += "_nn"
 
 # Construct the log file name
-log_file = os.path.join(data_path, "outputs_test", f"lr_outputs{suffix}.yml")
-#lr_path = os.path.join(data_path, 'outputs_test', f"lr_outputs{suffix}.yml")
+log_file = os.path.join(data_path, "outputs", f"lr_outputs{suffix}.yml")
+#lr_path = os.path.join(data_path, 'outputs', f"lr_outputs{suffix}.yml")
 
 if debug == True:
     print(BASEPATH)
