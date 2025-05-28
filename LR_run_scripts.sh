@@ -67,20 +67,21 @@ Help()
 
                                 ** NOTES ** 
    
-    1.  The scripts will look for /data in the working directory and are expecting
-        to find the input data within this folder (as pointed to by the input file)
-        and will be placing the outputs in this folder under the outputs directory.
+    1.  The scripts will look for /data and /config in the working directory. It will 
+        be placing the intermediatory outputs in the /data folder, and will be looking 
+        for the two setup files in the /config folder.
         
-    2.  The outputs directory should have in place from the previous setup of the 
-        HEALPix code separate folders for each ofthe HEALPix regions, named HP_###.
-        It is these folders (and naming conventions) that will be used to insert 
-        the region to the scripts, and direct the correct output files.
+    2.  The outputs directory should be in place from the previous use of the 
+        HEALPix code. There should be separate folders for each ofthe HEALPix regions, 
+        named HP_###. It is these folders (and naming conventions) that will be used to 
+        insert the region to the scripts, and direct to the correct output files.
     
-    3. 
+    3.  The user has enter in the input file, whether they wish for the radio catalogues 
+        to be used; whether they want the nearest neighbour catalogue created; and if they 
+        are after the initial parameters to be calculated or, just the final LRs.
 
     The options for this function are:
 
-    -s:         Runs the Setup for the environment and PYTHONPATH
     -h:         Prints this help and info.
     
 EOF
@@ -93,12 +94,9 @@ Setup()
     This will need to be run in the singularity container before the two scripts are
     run.
     *** Check if this is needed ***
+    If the user needs to set anything that is not already set in the container, then 
+    this function is in plce for the user to create their own configuration set up.
     '''
-
-    conda active myenv
-    alias python='/opt/conda/envs/myenv/bin/python3'
-    export PYTHONPATH=/azimuth/lr_lotss_dr2/notebooks/lr_tests/:$PYTHONPATH
-    export PYTHONPATH=/azimuth/lr_lotss_dr2/scripts/lr/:$PYTHONPATH
     
 }
 

@@ -24,31 +24,31 @@ Help()
 
     cat << EOF
     
-    This script runs the batching and un-batching script for the PyBDSF 
+    This script runs the batching script for the Likelihood Ratio (LR) 
     Singularity container on a Slurm cluster. It is used in conjunction with 
-    PyBDSF_Singularity.sh and ConcatCats.sh. Ideally all the scripts must be 
-    in the same folder to run, or the pathway to PyBDSF_Singularity.sh must 
-    be changed in the sbatch code line. The first five lines can be adjusted 
-    to allow the pathways to be included as arguments to the scripts as follows:
+    PLR_run_scripts.sh. Ideally all the scripts must be in the same folder to 
+    run, or the pathway to LR__run_scripts.sh must be changed in the sbatch 
+    code line. The arguments to the script are as 
+    follows:
 
-    - Arg 1:    Is the pathway to where the output is to be stored.
-    - Arg 2:    Is the pathway to the Singularity container.
-    - Arg 3:    Is the pathway to the mosaics. Most likely to be unchaged.
+    - Arg 1:    Is the working directory the user wishes to work from. This 
+                must contain both the /data folder and the /config folder.
+    - Arg 2:    The pathway to the directory containing the healpix outputs.
+    - Arg 3:    The pathway to the singularity container.
 
 
                             ** NOTE ** 
-    1. You must have a /logs/ folder in the directory you run this script in
+    1.  The user must have a /logs/ folder in the directory you run this script in
     for the log files of the batch jobs to save to.
     
-    2. You must create your LOG_FILE for recording the outcomes.
+    2.  The working directory must contain the folders /data and /config (containing
+        the two setup files)
     
-    3. Please check the name of the Singularity container and the mosaics in the
-    script; locations are indicated.
+    3.  Please check all the pathways that are inputted.
 
     The options for this function are:
 
-    -h:         Prints this help and info.
-    -c:         Cleans the symbolic links from the output directories.  
+    -h:         Prints this help and info. 
     
 EOF
 }
