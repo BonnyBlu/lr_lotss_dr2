@@ -1,0 +1,158 @@
+Bootstrap: docker
+From: continuumio/miniconda3:latest
+
+%labels
+    Author Bonny Barkus
+    Version 1.0
+    
+%post
+
+    # Update the package list and install any additional packages if needed
+    
+    apt-get update && apt-get install -y git
+
+    # Update conda to the latest version
+    
+    conda update -n base -c defaults conda -y
+    
+    # Create a new environment with Python 3.9.19
+    
+    conda create -n myenv python=3.9.19
+    
+    # Install packages
+    
+    conda install -n myenv numpy -y
+    conda install -n myenv matplotlib -y
+    conda install -n myenv astropy -y
+    conda install -n myenv python-dotenv -y
+    conda install -n myenv scipy -y
+    #conda install -n myenv conda-forge::mocpy -y #Currently not installing from conda - do not currently use in the scripts
+    conda install -n myenv scikit-learn -y
+    conda install -n myenv yaml -y
+    conda install -n myenv tqdm -y
+    conda install -n myenv joblib -y
+    conda install -n myenv ipython -y
+    conda install -n myenv jupyter -y
+    conda install -n myenv pip -y
+    
+    # Activate the conda evironment to install packages by pip
+    
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate myenv
+    
+    # install pip packages
+    
+    pip install py-moc
+    
+    # Clone the LoTSS DR2 LR Repo
+    
+    git clone --branch automated --single-branch https://github.com/BonnyBlu/lr_lotss_dr2.git /Documents/lr_lotss_dr2
+    
+    # Clean up to reduce image size
+    
+    conda clean --all -y
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+    
+    cat << 'EOF' > /usr/local/bin/entrypoint.sh
+#!/bin/bash
+. /opt/conda/etc/profile.d/conda.sh
+conda activate myenv
+exec "$@"
+EOF
+
+    chmod +x /usr/local/bin/entrypoint.sh
+    
+    
+%environment
+    
+    # Ensure the myenv is activated by default by setting PATH
+    
+    export PATH=/opt/conda/envs/myenv/bin:$PATH
+    
+    # Source the conda.sh script to enable conda commands
+    
+    . /opt/conda/etc/profile.d/conda.sh
+    
+    # Activate the myenv environment
+    
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate myenv
+    
+    # Sets up the colours in the terminal lists
+    
+    alias ls='ls -color'
+    
+%runscript
+    
+    # Commands to run when container is executed
+    # If no arguments are given open an interactive bash, otherwise run conda env
+    if [ $# -eq 0 ]; then
+        exec /usr/local/bin/entrypoint.sh bash
+    else
+        exec /usr/local/bin/entrypoint.sh "$@"
+    fi
+
+%startscript
+
+    # Change directory to the cloned repo and start Jupyter Notebook server
+    
+    cd /Documents/lr_lotss_dr2
+    exec jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root
+    
+    
+%test
+
+    # These run automatically when the container is built and if any fail then the build fails
+    
+    # Source the conda.sh script to enable conda commands
+    
+    . /opt/conda/etc/profile.d/conda.sh
+    
+    # Activate the myenv environment
+    
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate myenv
+    
+    python --version
+    python -c "import numpy"
+    python -c "import matplotlib"
+    python -c "import astropy"
+    python -c "import dotenv"
+    python -c "import scipy"
+    #python -c "import mocpy"
+    python -c "import pymoc"
+    python -c "import sklearn.neighbors"
+    python -c "import yaml"
+    python -c "import tqdm"
+    python -c "import IPython"
+    python -c "import jupyter"
+    
+    # Standard imports
+    
+    python -c "import os"
+    python -c "import multiprocessing"
+    python -c "import glob"
+    python -c "import pickle"
+    python -c "import urllib"
+    python -c "import concurrent.futures"
+    python -c "import shutil"
+    
+    # Imports from the repo
+    
+    cd /Documents/lr_lotss_dr2/src/
+    python -c "import mltier1"
+    
+    cd /Documents/lr_lotss_dr2/scripts/data_processing/
+    python -c "import  catalog_preprocess"
+
+    # This checks to see if the directory exists and then prints that it cloned, OR prints that it failed to clone
+
+    [ -d /Documents/lr_lotss_dr2 ] && echo "Repo cloned successfully" || echo "Repo cloning failed"
+    
+    
+    
+    
+    
+    
+    
