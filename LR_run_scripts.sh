@@ -12,7 +12,7 @@
 ## files are named by default to <jobname>_<jobID> but the user can change this.
 
 #SBATCH --job-name=LRSingularity        ##  Job Name
-#SBATCH --nodes=1                       ##  Number of nodes to run tasks over
+#SBATCH --nodes=2                       ##  Number of nodes to run tasks over
 #SBATCH --ntasks=2                      ##  Requests 2 CPUs on node
 #SBATCH --cpus-per-task=2               ##  Number of CPUs per task
 ##SBATCH --exclusive                    ##  Allocated nodes not shared with other jobs # commented out so not applied
