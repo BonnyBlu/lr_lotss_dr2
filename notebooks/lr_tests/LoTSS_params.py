@@ -5,12 +5,12 @@
 
 # This version computes the final parameters for the 0h region in an iterative fashion. The computation of the $Q_0$ is also included here.
 
-# ## Configuration
+### Configuration ###
 
 ##################
 
 
-# ### Load libraries and setup
+### Load libraries and setup
 debug = True
 log_out = True
 batch_out = True
@@ -64,6 +64,8 @@ print('gaussian set to', gauss)
 
 # This changes the name of the outputs file so that the thresholds can be obtained for each lr calculation
 # This can be commented out if different log files to collect the thresholds are not needed
+# This allows temporary yaml files to be created and at the end they will be merged into one yaml file and deleted.
+
 suffix = ""
 
 if gauss:
@@ -75,8 +77,11 @@ if lr_inputs.get("nearest", False):
     suffix += "_nn"
 
 # Construct the log file name
-log_file = os.path.join(out_path, f"lr_outputs{suffix}.yml")
+job_id = os.environ.get("SLURM_JOB_ID", "local")  # fallback to "local" if running outside SLURM
 
+log_file = os.path.join(out_path, "tmp", f"lr_outputs_{job_id}{suffix}.yml")
+
+os.makedirs(os.path.dirname(log_file), exist_ok=True) # This makes sure that the tmp directory exists
 
 '''
 Bonny's addition of logging the Error's and Outputs
@@ -202,7 +207,7 @@ print('colour_limits_post', colour_limits_post)
                   
 #sys.exit('Testing the imports from the .yml file')
 
-# General configuration
+### General configuration ###
 
 save_intermediate = True
 plot_intermediate = False
@@ -212,7 +217,7 @@ idp = os.path.join(data_path, "lr_outputs", "idata", region_name)
 os.makedirs(idp, exist_ok=True)
 
 
-# Load data
+### Load data ###
 
 print('loading optical data')
 combined_all = Table.read(combined_catalogue)
@@ -228,7 +233,7 @@ np.array(lofar_all.colnames)
 
 describe(lofar_all['Maj'])
 
-# Area limits
+### Area limits ###
 
 margin_ra = 0.1
 margin_dec = 0.1
@@ -257,7 +262,7 @@ field_optical = Field(
     dec_up + margin_dec)
 
 
-# Filter catalogues
+### Filter catalogues ###
 
 # We will take the sources in the main region but also discard sources with a Major axis size bigger than 15 arsecs.
 
@@ -276,7 +281,7 @@ combined_nomargin = field.filter_catalogue(combined_all,
                                 colnames=("RA", "DEC"))
 
 
-# Additional data
+### Additional data ###
 
 # Compute some additional data that was not available in the catalogues like the colour or an auxiliary array with an index.
 
@@ -324,7 +329,7 @@ print("Only WISE - ", np.sum(combined_wise))
 print("Only W2   - ", np.sum(combined_wise2))
 
 
-# Colour categories
+### Colour categories ###
 
 # The colour categories will be used after the first ML match
 
@@ -386,7 +391,7 @@ numbers_combined_bins
 
 np.sum(numbers_combined_bins)
 
-# Description
+### Description ###
 
 # Sky coverage
 
@@ -460,7 +465,7 @@ np.sum(numbers_combined_bins)
 #plt.hist((combined["MAG_R"] - combined["MAG_W2"])[combined_legacy], bins=50, alpha=0.4, density=True)
 #plt.xlabel("(R - W2) (R lim. = 23)");
 
-# Maximum Likelihood 1st iteration
+### Maximum Likelihood 1st iteration ###
 
 # First estimation of $Q_0$ for r-band
 
@@ -537,7 +542,7 @@ if np.isnan(Q0_r):
 
 print('Q0_r',Q0_r)
 
-# Compute q(m) and n(m)
+### Compute q(m) and n(m) ###
 
 # R-band preparation
 
@@ -582,7 +587,7 @@ q_m_r_cs = np.cumsum(q_m_r)
 #plt.plot(center_r, q_m_r/n_m_r);
 
 
-# W1-band preparation
+### W1-band preparation ###
 
 bandwidth_w1 = 0.5
 
@@ -621,7 +626,7 @@ if debug == True:
 #plt.plot(center_w1, q_m_w1/n_m_w1);
 
 
-# W2-band preparation
+### W2-band preparation ###
 
 bandwidth_w2 = 0.5
 
@@ -756,7 +761,7 @@ res = parallel_process(idx_lofar_unique, ml, n_jobs=1)
  lofar["lr_r"][idx_lofar_unique]) = list(map(list, zip(*res)))
 
 
-# Threshold and selection for r-band
+### Threshold and selection for r-band ###
 
 lofar["lr_r"][np.isnan(lofar["lr_r"])] = 0
 
@@ -917,7 +922,7 @@ indices_w1 = np.arange(len(lofar))[subsample_w1][idx_lofar_unique_w1]
  lofar["lr_dist_w1"][indices_w1], 
  lofar["lr_w1"][indices_w1]) = list(map(list, zip(*res_w1)))
 
-# Threshold and selection for W1 band
+### Threshold and selection for W1 band ###
 
 lofar["lr_w1"][np.isnan(lofar["lr_w1"])] = 0
 
@@ -1111,7 +1116,7 @@ if debug == True:
 lofar["lr_index_sel_w2"] = lofar["lr_index_w2"]
 lofar["lr_index_sel_w2"][lofar["lr_w2"] < threshold_w2] = np.nan
 
-# Final selection of the match
+### Final selection of the match ###
 
 # We combine the ML matching done in r-band, W1-band, and W2-band. All the galaxies were the LR is above the selection ratio for the respective band are finally selected.
 
@@ -1210,7 +1215,7 @@ t, c = np.unique(lofar["lr_type_1"], return_counts=True)
 for i, t0 in enumerate(t):
     print("Match type {}: {}".format(t0, c[i]))
 
-# Duplicated sources
+### Duplicated sources ###
 
 # This is the number of sources of the combined catalogue that are combined to multiple LOFAR sources. In the case of the catalogue of Gaussians the number can be very high.
 if debug == True:
@@ -1408,7 +1413,7 @@ for i in range(2, len(numbers_lofar_combined_bins)):
 # * https://stackoverflow.com/questions/19390895/matplotlib-plot-with-variable-line-width
 # * https://stackoverflow.com/questions/432112/is-there-a-numpy-function-to-return-the-first-index-of-something-in-an-array
 
-# Save intermediate parameters
+### Save intermediate parameters ###
 if debug == True:
     print('saving intermediate data')
 
@@ -1416,7 +1421,7 @@ if save_intermediate:
     pickle.dump([bin_list, centers, Q_0_colour, n_m, q_m], 
                 open("{}/lofar_params_2.pckl".format(idp), 'wb'))
 
-# Prepare for ML
+### Prepare for ML ###
 
 selection = ~np.isnan(combined["category"]) # Avoid the two dreaded sources with no actual data
 catalogue = combined[selection]
@@ -1457,7 +1462,7 @@ def apply_ml(i, likelihood_ratio_function):
               lr_0[chosen_index]]                                  # LR
     return result
 
-# Run the cross-match
+### Run the cross-match ###
 
 # This will not need to be repeated after
 
