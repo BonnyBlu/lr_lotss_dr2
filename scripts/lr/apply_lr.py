@@ -69,8 +69,11 @@ if lr_inputs.get("nearest", False):
     suffix += "_nn"
 
 # Construct the log file name
-log_file = os.path.join(data_path, "outputs", f"lr_outputs{suffix}.yml")
-#lr_path = os.path.join(data_path, 'outputs', f"lr_outputs{suffix}.yml")
+job_id = os.environ.get("SLURM_JOB_ID", "local")  # fallback to "local" if running outside SLURM
+
+log_file = os.path.join(data_path, "outputs", "tmp", f"lr_outputs_{job_id}{suffix}.yml")
+
+os.makedirs(os.path.dirname(log_file), exist_ok=True) # This makes sure that the tmp directory exists
 
 if debug == True:
     print(BASEPATH)

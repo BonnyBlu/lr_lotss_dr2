@@ -109,6 +109,8 @@ for d in "${dirs[@]}" ; do                          ##
     job_id=$(sbatch LR_run_scripts.sh "${WORKING_DIR}" "${REGION}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches PyBDSF_Singularity and stores the job_id in the array
         
     job_ids+=("${job_id}")
+
+    sleep 0.5                                       ## This prevents the job submission from throttling
       
 done
 
