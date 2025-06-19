@@ -12,11 +12,26 @@ import sys
 ##################
 
 ### Files and inputs ###
-suffix = sys.argv[1] if len(sys.argv) > 1 else ""
+suffix = sys.argv[2] if len(sys.argv) > 1 else ""
 suffix = suffix.strip()
 
-temp_dir = "outputs/tmp"
-out_file = os.path.join("outputs", f"lr_outputs{suffix}.yml")
+dir = sys.argv[1]                               # Working directory to change to and run the code from
+os.chdir(dir)                                   # Move to working/data directory (should be bound to container)
+
+
+try:
+    BASEPATH = os.path.dirname(os.path.realpath(__file__))
+    data_path = os.path.join(BASEPATH, "data")
+except NameError:
+    if os.path.exists("data"):
+        BASEPATH = "."
+        data_path = os.path.join(BASEPATH, "data")
+    else:
+        BASEPATH = os.getcwd()
+        data_path = os.path.join(BASEPATH, "..", "..", "data")
+
+temp_dir = os.path.join(data_path,"outputs", "tmp")
+out_file = os.path.join(data_path, "outputs", f"lr_outputs{suffix}.yml")
 
 ### Main code ###
 

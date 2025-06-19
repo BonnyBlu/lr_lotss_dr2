@@ -210,7 +210,7 @@ fi
 
 echo "All jobs complete. Merging results..."
 
-python3 merge_yml_results.py "${suffix}"
+python3 merge_yml_results.py "${WORKING_DIR}" "${suffix}"
 
 echo "Merge complete. Output stored in results/lr_outputs${suffix}.yml"
 
