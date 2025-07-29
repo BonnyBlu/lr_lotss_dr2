@@ -77,7 +77,7 @@ Help()
         named HP_###. It is these folders (and naming conventions) that will be used to 
         insert the region to the scripts, and direct to the correct output files.
     
-    3.  The user has enter in the input file, whether they wish for the radio catalogues 
+    3.  The user has to enter in the input file, whether they wish for the radio catalogues 
         to be used; whether they want the nearest neighbour catalogue created; and if they 
         are after the initial parameters to be calculated or, just the final LRs.
 
@@ -150,6 +150,23 @@ echo "Calculating the thresholds: $THRES_CALC"
 echo "Calculating the final LRs: $APPLY_CALC"
 echo "Thresholds are stored in: $PARAMS_NAME"
 
+# Build the same suffix as in the Python script
+echo "Merging the Gaussians yamls: $GAUSSIAN"
+echo "Merging the nearest neighbours yamls: $NEAREST"
+
+SUFFIX=""
+if [[ "$GAUSSIAN" == "True" ]]; then
+    SUFFIX="${SUFFIX}_gauss"
+else
+    SUFFIX="${SUFFIX}_radio"
+fi
+
+if [[ "$NEAREST" == "True" ]]; then
+    SUFFIX="${SUFFIX}_nn"
+fi
+
+####################
+
 # Compute region suffix (e.g., '099' from 'hp_099')
 REGION_SUFFIX="${REGION:3}"
 
@@ -161,27 +178,82 @@ else
 fi
 
 
+
+
+## Run both the params and the LR scripts
 if [ "$THRES_CALC" = "True" ]; then
+    ## Run first script to calculate paramters for LR
     echo "The thresholds and parameters are being calculated for ${REGION}. This will overwrite the previous details."
-
+    
+    # Run script
     singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}
+    
+    # Merge YAML results once all jobs are complete
+    echo "All jobs complete. Merging results..."
 
+    singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python3 merge_yml_results.py "${WORKING_DIR}" "${SUFFIX}"
+
+    echo "Merge complete. Output stored in outputs/lr_outputs${suffix}.yml"
+
+    # Calculate and store averages of the thresholds
+    echo "Calculating average threshold value"
+
+    singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python3 threshold_stats.py "${WORKING_DIR}/data/outputs/lr_outputs${SUFFIX}.yml" "${SUFFIX}"
+
+    echo "Threshold statisics stored in average_thresholds.yml"
+
+    
+    # Run second script to calculate and output final LR
     if [ "$APPLY_CALC" = "True" ]; then
         echo "Continuing with the likelihood ratio calculation."
 
         singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}
     fi
 
+    # Merge YAML results once all jobs are complete
+    echo "All jobs complete. Merging results..."
+
+    singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python3 merge_yml_results.py "${WORKING_DIR}" "${SUFFIX}"
+
+    echo "Merge complete. Output stored in outputs/lr_errors${suffix}.yml"
+
+
+
+## Run just the LR script
 elif [ "$APPLY_CALC" = "True" ]; then
+    # Check to see if params information is present
     if [ ! -d "$PARAMS_OUTPUT_DIR" ]; then
         echo "Threshold parameters directory (${PARAMS_OUTPUT_DIR}) not found. Calculating thresholds first."
 
+        # If not, run first script
         singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/notebooks/lr_tests/LoTSS_params.py ${WORKING_DIR} ${REGION}
-    fi
+    
+        # Merge YAML results once all jobs are complete
+        echo "All jobs complete. Merging results..."
 
+        singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python3 merge_yml_results.py "${WORKING_DIR}" "${SUFFIX}"
+
+        echo "Merge complete. Output stored in outputs/lr_outputs${suffix}.yml"
+
+        # Calculate and store averages of the thresholds
+        echo "Calculating average threshold value"
+
+        singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python3 threshold_stats.py "${WORKING_DIR}/data/outputs/lr_outputs${SUFFIX}.yml" "${SUFFIX}"
+
+        echo "Threshold statisics stored in average_thresholds.yml"
+    
+    fi
+    # Running second script
     echo "Continuing with the likelihood ratio calculation."
 
     singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python /Documents/lr_lotss_dr2/scripts/lr/apply_lr.py ${WORKING_DIR} ${REGION}
+
+    # Merge YAML results once all jobs are complete
+    echo "All jobs complete. Merging results..."
+
+    singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python3 merge_yml_results.py "${WORKING_DIR}" "errors_${SUFFIX}"
+
+    echo "Merge complete. Output stored in outputs/lr_output_errors_${suffix}.yml"
 
 else
     echo "Neither threshold nor likelihood ratio calculation is requested. Exiting."

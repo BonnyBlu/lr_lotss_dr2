@@ -73,7 +73,9 @@ job_id = os.environ.get("SLURM_JOB_ID", "local")  # fallback to "local" if runni
 
 log_file = os.path.join(data_path, "outputs", "tmp", f"lr_outputs_{job_id}{suffix}.yml")
 
-os.makedirs(os.path.dirname(log_file), exist_ok=True) # This makes sure that the tmp directory exists
+thres_file = os.path.join(data_path, "outputs", "average_thresholds.yml")
+
+#os.makedirs(os.path.dirname(log_file), exist_ok=True) # This makes sure that the tmp directory exists
 
 if debug == True:
     print(BASEPATH)
@@ -176,15 +178,19 @@ else:
     RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+str(REGION[3:])+'.fits')
     OUTPUT_RADIO_CATALOGUE = os.path.join(hp_path, lr_inputs["rad_in"]+'lr_'+str(REGION[3:])+'.fits')
 
-with open(log_file, "r") as f:
-    logs = yaml.safe_load(f)
+with open(thres_file, "r") as f:
+    thresholds = yaml.safe_load(f)
+
+if suffix not in thresholds:
+    raise SystemExit(f"Threshold section for '{suffix}' not found in average_thresholds.yml.")
 
 try:
-    THRESHOLD = logs[REGION]["logs"][-1]["threshold"]
-except:
-    if log_out == True:
-        log_outputs(REGION, "ThresholdError", details = "The threshold was not calculated in the previous step and the LRs are not being calculated.")
-        raise SystemExit("Threshold was not calculated in the previous script and the LR calculation has been exited")
+    THRESHOLD = thresholds[suffix]["averages_0to1"]["median"]
+except Exception as e:
+    if log_out:
+        log_outputs(REGION, "ThresholdError", details=f"Could not retrieve global median from 'averages_0to1': {e}")
+    raise SystemExit(f"Threshold could not be retrieved from global 'averages_0to1': {e}. Will need to run previous steps.")
+
 
 
 # Default config parameters

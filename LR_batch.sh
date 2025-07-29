@@ -106,7 +106,7 @@ for d in "${dirs[@]}" ; do                          ##
 
     echo "Submitting job for directory: ${REGION}"
    
-    job_id=$(sbatch LR_run_scripts.sh "${WORKING_DIR}" "${REGION}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches PyBDSF_Singularity and stores the job_id in the array
+    job_id=$(sbatch LR_run_scripts.sh "${WORKING_DIR}" "${REGION}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches LRSingularity and stores the job_id in the array
         
     job_ids+=("${job_id}")
 
@@ -186,33 +186,4 @@ while true; do
 
 done  ## End of monitoring loop
 
-####################
 
-## Merge YAML results once all jobs are complete
-
-# Build the same suffix as in the Python script
-
-eval "$(${WORKING_DIR}/config/call_yaml.py ${WORKING_DIR}/config/inputs.yml lr_inputs gaussian nearest)"
-
-echo "Merging the Gaussians yamls: $GAUSSIAN"
-echo "Merging the nearest neighbours yamls: $NEAREST"
-
-suffix=""
-if [[ "$GAUSSIAN" == "True" ]]; then
-    suffix="${suffix}_gauss"
-else
-    suffix="${suffix}_radio"
-fi
-
-if [[ "$NEAREST" == "True" ]]; then
-    suffix="${suffix}_nn"
-fi
-
-echo "All jobs complete. Merging results..."
-
-python3 merge_yml_results.py "${WORKING_DIR}" "${suffix}"
-
-echo "Merge complete. Output stored in results/lr_outputs${suffix}.yml"
-
-
-####################
