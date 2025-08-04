@@ -97,31 +97,26 @@ def initialize_log_file():
         yaml.safe_dump({}, f)  # Start with an empty dictionary
 
 def log_outputs(region, error, details=None, threshold=None):
-    """
-    Function to log an error to the .yml file.
-
-    :param region: The region where the error/output occurs.
-    :param error: The type of error.
-    :param details: Any additional details to log.
-    :param threshold: A numeric threshold value (optional)
-    """
     try:
-        # Load existing log data
-        with open(log_file, "r") as f:
-            log_data = yaml.safe_load(f) or {}
+        # Ensure log directory exists
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
-        # Ensure the region exists in the log file
+        # Load existing log data if file exists
+        if os.path.exists(log_file):
+            with open(log_file, "r") as f:
+                log_data = yaml.safe_load(f) or {}
+        else:
+            log_data = {}
+
         if region not in log_data:
-            log_data[region] = {"logs": []}  # Initialize with an empty list
+            log_data[region] = {"logs": []}
 
-        # Append a new log entry
         log_entry = {"error": error, "details": details if details else ""}
         if threshold is not None and isinstance(threshold, np.floating):
             log_entry["threshold"] = float(threshold)
 
         log_data[region]["logs"].append(log_entry)
 
-        # Write updated log data back to the YAML file
         with open(log_file, "w") as f:
             yaml.safe_dump(log_data, f, default_flow_style=False)
 

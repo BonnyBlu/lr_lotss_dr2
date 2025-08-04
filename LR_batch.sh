@@ -26,9 +26,9 @@ Help()
     
     This script runs the batching script for the Likelihood Ratio (LR) 
     Singularity container on a Slurm cluster. It is used in conjunction with 
-    PLR_run_scripts.sh. Ideally all the scripts must be in the same folder to 
-    run, or the pathway to LR__run_scripts.sh must be changed in the sbatch 
-    code line. The arguments to the script are as 
+    lr_params_run.sh and apply_lr_run.sh. Ideally all the scripts must be in 
+    the same folder to run, or the pathway to LR__run_scripts.sh must be changed
+    in the sbatch code line. The arguments to the script are as 
     follows:
 
     - Arg 1:    Is the working directory the user wishes to work from. This 
@@ -78,112 +78,275 @@ while getopts ":h" option; do
 done
         
 ####################
+## Variables and arguments
+####################
+
+# Build the same suffix as in the Python script
+
+eval "$(${WORKING_DIR}/config/call_yaml.py ${WORKING_DIR}/config/inputs.yml lr_inputs gaussian nearest thres_calc apply_calc)"
+
+echo "Calculating the Gaussians: $GAUSSIAN"
+echo "Calculating the nearest neighbours: $NEAREST"
+echo "Calculating the thresholds: $THRES_CALC"
+echo "Calculating the final LRs: $APPLY_CALC"
+
+SUFFIX=""
+if [[ "$GAUSSIAN" == "True" ]]; then
+    SUFFIX="${SUFFIX}_gauss"
+else
+    SUFFIX="${SUFFIX}_radio"
+fi
+
+if [[ "$NEAREST" == "True" ]]; then
+    SUFFIX="${SUFFIX}_nn"
+fi
+
 
 
 ####################
 ## Main code
 ####################
 
-#Do we want to do a check for if the data is already there or will we always go with an overwrite aspect?
+if [ "$THRES_CALC" = "True" ]; then
 
-## This sections checks if the code has already been run; clears a folder of the same name
-## and starts again, if it was mid run. Here the code makes the folders and the symlinks.
 
-job_ids=()                                              ##  Set up an empty array called job_ids to store the output job_ids
+    job_ids=()                                              ##  Set up an empty array called job_ids to store the output job_ids
 
-shopt -s nullglob
+    shopt -s nullglob
 
-dirs=(${OUT_DIR}/*/)
+    dirs=("${OUT_DIR}"/*/)
 
-if [ ${#dirs[@]} -eq 0 ]; then
-    echo "No subdirectories found in ${OUT_DIR}"
-    exit 1
-fi
+    if [ ${#dirs[@]} -eq 0 ]; then
+        echo "No subdirectories found in ${OUT_DIR}"
+        exit 1
+    fi
 
-for d in "${dirs[@]}" ; do                          ##  
+    for d in "${dirs[@]}" ; do                           
 
-    REGION=$(basename "${d}")
+        REGION=$(basename "${d}")
 
-    echo "Submitting job for directory: ${REGION}"
-   
-    job_id=$(sbatch LR_run_scripts.sh "${WORKING_DIR}" "${REGION}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches LRSingularity and stores the job_id in the array
+        echo "Submitting job for directory: ${REGION}"
+    
+        job_id=$(sbatch lr_params_run.sh "${WORKING_DIR}" "${REGION}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches LRSingularity and stores the job_id in the array
+            
+        job_ids+=("${job_id}")
+
+        sleep 0.5                                       ## This is to prevent the job submission from throttling
         
-    job_ids+=("${job_id}")
-
-    sleep 0.5                                       ## This prevents the job submission from throttling
-      
-done
+    done
 
 
 ####################
 
-## This section checks to make sure all the previous batch jobs have completed
+    ## This section checks to make sure all the previous batch jobs have completed
 
-while true; do
+    while true; do
+        active_jobs=0
+        echo "Monitoring the following job ids: ${job_ids[@]}"
 
-    active_jobs=0
-    
-    echo "Monitoring the following job ids: ${job_ids[@]}"
-    for job_id in "${job_ids[@]}"; do                               ##  For each of the job ids in the array job_ids from above
-        sleep 10
-        echo "Setting status"
-        ## Fetch job status awk filters out lines containing COMPLETED and dashes (with any number of spaces). gsub strips leading spaces. Prints the first field, and the first line if more than one.
-        status=$(sacct -j "${job_id}" --format=State --noheader | awk '!/COMPLETED|^[[:space:]]*--+[[:space:]]*$/{gsub(/^[[:space:]]+/, ""); print $1}' | head -n 1)
+        # Fetch all job statuses in one call
+        job_id_str=$(IFS=','; echo "${job_ids[*]}")
+        sacct_output=$(sacct -j "$job_id_str" --format=JobID,State --noheader)
 
-        ## Checking to see if it has an empty status
-        if [[ -z "${status}" ]]; then
-            echo "Job ${job_id} has no status information (likely completed or purged from sacct). Assuming completed." >> "${LOG_FILE}"
-            continue
+        for job_id in "${job_ids[@]}"; do
+            echo "Setting status for job ${job_id}"
+
+            # Extract the primary status for the job from sacct output
+            status=$(echo "$sacct_output" | awk -v id="$job_id" '
+                $1 ~ "^"id"($|[.])" && $2 !~ /COMPLETED|^--*$/ {
+                    gsub(/^[[:space:]]+/, "", $2); print $2; exit
+                }'
+            )
+
+            if [[ -z "${status}" ]]; then
+                echo "Job ${job_id} has no status information (likely completed or purged). Assuming completed." >> "${LOG_FILE}"
+                continue
+            fi
+
+            echo "Checking status of ${job_id}: ${status}"
+            case "${status}" in
+                RUNNING|PENDING)
+                    echo "Job is running normally. Status is not recorded in log file."                                
+                    ((active_jobs++))
+                    ;;
+                FAILED|CANCELLED|TIMEOUT|NODE_FAIL|REVOKED)
+                    echo "Job ${job_id} ended abnormally with status: ${status}. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
+                    ;;
+                CONFIGURING|COMPLETING)
+                    echo "Job will complete shortly. Status is: ${status}"
+                    ((active_jobs++))
+                    ;;
+                SUSPENDED|PREEMPTED)
+                    echo "Job ${job_id} is in a temporary state: ${status}. Manual check might be needed. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
+                    ((active_jobs++))
+                    ;;
+                *)
+                    echo "Job ${job_id} has an unexpected status: ${status}. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
+                    ((active_jobs++))
+                    ;;
+            esac
+        done
+
+        echo "Number of current active jobs is: ${active_jobs}"
+        if [[ "${active_jobs}" -eq 0 ]]; then
+            echo "All jobs completed. Proceeding to next step."
+            break
         fi
 
-        echo "Checking status of ${job_id}: ${status}"
-        case "${status}" in
-           
-            ## Running or pending jobs output everything is fine and kept going by setting all_done to 0.
-            RUNNING|PENDING)
-                echo "Job is running normally. Status is not recorded in log file."                                
-                ((active_jobs++))
-                ;;
-                
-            ## Failed/cancelled/timeout/node_fail/revoked jobs are recorded in the output file so that the .err file can be looked at.
-            FAILED|CANCELLED|TIMEOUT|NODE_FAIL|REVOKED)
-                echo "Job ${job_id} ended abnormally with status: ${status}. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
-                ;;
-                
-            ## Transitioning jobs, will continue shortly; kept going by setting all_done to 0
-            CONFIGURING|COMPLETING)
-                echo "Job will complete shortly. Status is: ${status}"
-                ((active_jobs++))
-                ;;
-                
-            ## Temporary status jobs; kept going by setting all_done to 0. Records to log file.
-            SUSPENDED|PREEMPTED)
-                echo "Job ${job_id} is in a temporary state: ${status}. Manual check might be needed. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
-                ((active_jobs++))
-                ;;
-                
-            ## Deals with any other status that might occur.  Keeps the loop going by setting all_done to 0, and records to log file.
-            *)
-                echo "Job ${job_id} has an unexpected status: ${status}. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
-                ((active_jobs++))
-                ;;
-        esac
-    
+        echo "Sleeping before next check..."
+        sleep 2  # sleeps for 2 seconds before re-checking
     done
-    
-    echo "Number of current active jobs is: ${active_jobs}"
-    
-    if [[ "${active_jobs}" -eq 0 ]]; then
-        echo "About to break"
-        break
-    
-    fi
-    
-    
-    echo "Entering Sleep"
-    sleep 10                                           ##  Check every 5 minutes
-    echo "Finished Sleep"
 
-done  ## End of monitoring loop
+    ####################
+
+    ## Merge YAML results once all jobs are complete
+
+    if [[ -f "${WORKING_DIR}/scripts/merge_yml_results.py" ]]; then
+        #python "${WORKING_DIR}/scripts/merge_yml_results.py" "${WORKING_DIR}" "${SUFFIX}"
+        singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python "${WORKING_DIR}/scripts/merge_yml_results.py" "${WORKING_DIR}" "${SUFFIX}"
+        echo "Merge complete. Output stored in outputs/lr_outputs${SUFFIX}.yml"
+    else
+        echo "Error: ${WORKING_DIR}/merge_yml_results.py not found. Exiting." >&2
+        exit 1
+    fi
+
+    ####################
+
+    ## Calculate average threshold
+
+    if [[ -f "${WORKING_DIR}/scripts/threshold_stats.py" ]]; then
+        echo "Calculating the threshold for ${SUFFIX}."
+        #python "${WORKING_DIR}/scripts/threshold_stats.py" "${WORKING_DIR}/data/outputs/lr_outputs${SUFFIX}" "${SUFFIX}"
+        singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python "${WORKING_DIR}/scripts/threshold_stats.py" "${WORKING_DIR}/data/outputs/lr_outputs${SUFFIX}.yml" "${SUFFIX}"
+        echo "Average threshold for ${SUFFIX} calculated, ready for LR."
+    else
+        echo "Error: ${WORKING_DIR}/threshold_stats.py not found. Exiting." >&2
+        exit 1
+fi
+
+else
+    echo "Threshold calculation not requested. Exit job run and edit config.yml if calculations are required."
+
+fi
+
+####################
+
+if [ "$APPLY_CALC" = "True" ]; then
+
+    ## Checking that the averages have successfully been calculated before moving on to the LR calculation
+
+    YAML_FILE="${WORKING_DIR}/data/outputs/average_thresholds.yml"
+
+    if [[ -f "${YAML_FILE}" ]] && grep -q "${SUFFIX}" "${YAML_FILE}"; then
+        echo "YAML file exists and contains the averages for ${SUFFIX}. Proceeding..."
+    else
+        echo "Threshold calculations have not been averaged. Please run script again with THRES_CALC = True set in the config.yml file. Exiting"
+        exit 1
+    fi
+
+    job_ids=()                                              ##  Set up an empty array called job_ids to store the output job_ids
+
+    shopt -s nullglob
+
+    dirs=("${OUT_DIR}"/*/)
+
+    if [ ${#dirs[@]} -eq 0 ]; then
+        echo "No subdirectories found in ${OUT_DIR}"
+        exit 1
+    fi
+
+    for d in "${dirs[@]}" ; do                          ##  
+
+        REGION=$(basename "${d}")
+
+        echo "Submitting job for directory: ${REGION}"
+    
+        job_id=$(sbatch apply_lr_run.sh "${WORKING_DIR}" "${REGION}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches LRSingularity and stores the job_id in the array
+            
+        job_ids+=("${job_id}")
+
+        sleep 0.5                                       ## This is to prevent the job submission from throttling
+        
+    done
+
+
+    ####################
+
+    ## This section checks to make sure all the previous batch jobs have completed
+
+    while true; do
+        active_jobs=0
+        echo "Monitoring the following job ids: ${job_ids[@]}"
+
+        # Fetch all job statuses in one call
+        job_id_str=$(IFS=','; echo "${job_ids[*]}")
+        sacct_output=$(sacct -j "$job_id_str" --format=JobID,State --noheader)
+
+        for job_id in "${job_ids[@]}"; do
+            echo "Setting status for job ${job_id}"
+
+            # Extract the primary status for the job from sacct output
+            status=$(echo "$sacct_output" | awk -v id="$job_id" '
+                $1 ~ "^"id"($|[.])" && $2 !~ /COMPLETED|^--*$/ {
+                    gsub(/^[[:space:]]+/, "", $2); print $2; exit
+                }'
+            )
+
+            if [[ -z "${status}" ]]; then
+                echo "Job ${job_id} has no status information (likely completed or purged). Assuming completed." >> "${LOG_FILE}"
+                continue
+            fi
+
+            echo "Checking status of ${job_id}: ${status}"
+
+            case "${status}" in
+                RUNNING|PENDING)
+                    echo "Job is running normally. Status is not recorded in log file."                                
+                    ((active_jobs++))
+                    ;;
+                FAILED|CANCELLED|TIMEOUT|NODE_FAIL|REVOKED)
+                    echo "Job ${job_id} ended abnormally with status: ${status}. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
+                    ;;
+                CONFIGURING|COMPLETING)
+                    echo "Job will complete shortly. Status is: ${status}"
+                    ((active_jobs++))
+                    ;;
+                SUSPENDED|PREEMPTED)
+                    echo "Job ${job_id} is in a temporary state: ${status}. Manual check might be needed. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
+                    ((active_jobs++))
+                    ;;
+                *)
+                    echo "Job ${job_id} has an unexpected status: ${status}. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
+                    ((active_jobs++))
+                    ;;
+            esac
+        done
+
+        echo "Number of current active jobs is: ${active_jobs}"
+        if [[ "${active_jobs}" -eq 0 ]]; then
+            echo "All jobs completed. Proceeding to next step."
+            break
+        fi
+
+        echo "Sleeping before next check..."
+        sleep 2  # sleeps for 2 seconds before re-checking
+    done
+
+else
+    echo "Likelihood ratio calculation not requested. Exit job run and edit the config.yml file if these calculations are required."
+
+fi
+
+####################
+
+## Merge error YAML results once all jobs are complete
+
+echo "All threshold jobs complete. Merging results..."
+
+#python ${WORKING_DIR}/merge_yml_results.py "${WORKING_DIR}" "_errors${SUFFIX}"
+singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python ${WORKING_DIR}/merge_yml_results.py "${WORKING_DIR}" "_errors${SUFFIX}"
+echo "Merge complete. Output stored in outputs/lr_outputs_errors${SUFFIX}.yml"
+
+
 
 
