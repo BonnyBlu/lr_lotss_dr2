@@ -1266,7 +1266,7 @@ numbers_combined_bins
 # Get the colour category and magnitudes for the matched LOFAR sources
 
 bandwidth_colour = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
-        0.5, 0.5, 0.5, 0.5, 0.5]
+        0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
 
 if debug == True:
     print('calculating n_m for w1, w2, and r')
