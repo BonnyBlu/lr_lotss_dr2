@@ -336,7 +336,8 @@ combined_wise =(
 
 combined_wise2 =(
     np.isnan(combined[VIS_col]) & 
-    np.isnan(combined[NIR_col1])
+    np.isnan(combined[NIR_col1]) &
+    ~np.isnan(combined[NIR_col2])
 )
 
 print("Total     - ", len(combined))
