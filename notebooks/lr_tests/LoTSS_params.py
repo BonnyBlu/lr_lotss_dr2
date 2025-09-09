@@ -62,6 +62,21 @@ gauss = lr_inputs['gaussian']
 hp_path = os.path.join(out_path, REGION)
 print('gaussian set to', gauss)
 
+# This calls the column names in from the input file so that they are not hard coded throughout the rest of the script
+
+VIS_col = lr_inputs['VIS_col']
+NIR_col1 = lr_inputs['NIR_col1']
+NIR_col2 = lr_inputs['NIR_col2']
+RA_rad = lr_inputs['RA_rad']
+DEC_rad = lr_inputs['DEC_rad']
+RA_opt = lr_inputs['RA_opt']
+DEC_opt = lr_inputs['DEC_opt']
+PA_rad = lr_inputs['PA_rad']
+Maj_rad = lr_inputs['Maj_rad']
+E_Maj_rad = lr_inputs['E_Maj_rad']
+E_Min_rad = lr_inputs['E_Min_rad']
+
+
 # This changes the name of the outputs file so that the thresholds can be obtained for each lr calculation
 # This can be commented out if different log files to collect the thresholds are not needed
 # This allows temporary yaml files to be created and at the end they will be merged into one yaml file and deleted.
@@ -77,7 +92,8 @@ if lr_inputs.get("nearest", False):
     suffix += "_nn"
 
 # Construct the log file name
-job_id = os.environ.get("SLURM_JOB_ID", "local")  # fallback to "local" if running outside SLURM
+#job_id = os.environ.get("SLURM_JOB_ID", "local")  # fallback to "local" if running outside SLURM
+job_id = 'eu_001'
 
 log_file = os.path.join(data_path, "tmp", f"lr_outputs_{job_id}{suffix}.yml")
 
@@ -231,17 +247,17 @@ np.array(combined_all.colnames)
 
 np.array(lofar_all.colnames)
 
-describe(lofar_all['Maj'])
+describe(lofar_all[Maj_rad])
 
 ### Area limits ###
 
 margin_ra = 0.1
 margin_dec = 0.1
 
-dec_down = round(np.nanmin(lofar_all['DEC']), 1)
-dec_up = round(np.nanmax(lofar_all['DEC']), 1)
-ra_down = round(np.nanmin(lofar_all['RA']), 1)
-ra_up = round(np.nanmax(lofar_all['RA']), 1)
+dec_down = round(np.nanmin(lofar_all[DEC_rad]), 1)
+dec_up = round(np.nanmax(lofar_all[DEC_rad]), 1)
+ra_down = round(np.nanmin(lofar_all[RA_rad]), 1)
+ra_up = round(np.nanmax(lofar_all[RA_rad]), 1)
 
 print('ra down', ra_down, 'ra up', ra_up, 'dec down', dec_down, 'dec up', dec_up)
 
@@ -266,39 +282,39 @@ field_optical = Field(
 
 # We will take the sources in the main region but also discard sources with a Major axis size bigger than 15 arsecs.
 
-lofar_aux = lofar_all[~np.isnan(lofar_all['Maj'])]
+lofar_aux = lofar_all[~np.isnan(lofar_all[Maj_rad])]
 
-lofar = field.filter_catalogue(lofar_aux[(lofar_aux['Maj'] < max_major)], 
-                               colnames=("RA", "DEC"))
+lofar = field.filter_catalogue(lofar_aux[(lofar_aux[Maj_rad] < max_major)], 
+                               colnames=(RA_rad, DEC_rad))
 
-lofar_full = field_full.filter_catalogue(lofar_aux[(lofar_aux['Maj'] < max_major)], 
-                                         colnames=("RA", "DEC"))
+lofar_full = field_full.filter_catalogue(lofar_aux[(lofar_aux[Maj_rad] < max_major)], 
+                                         colnames=(RA_rad, DEC_rad))
 
 combined = field_optical.filter_catalogue(combined_all, 
-                                colnames=("RA", "DEC"))
+                                colnames=(RA_opt, DEC_opt))
 
 combined_nomargin = field.filter_catalogue(combined_all, 
-                                colnames=("RA", "DEC"))
+                                colnames=(RA_opt, DEC_opt))
 
 
 ### Additional data ###
 
 # Compute some additional data that was not available in the catalogues like the colour or an auxiliary array with an index.
 
-combined["colour"] = combined["MAG_R"] - combined["MAG_W1"]
+combined["colour"] = combined[VIS_col] - combined[NIR_col1]
 
 combined_aux_index = np.arange(len(combined))
 
 
 # Sky coordinates
 
-coords_combined = SkyCoord(combined['RA'], 
-                           combined['DEC'], 
+coords_combined = SkyCoord(combined[RA_opt], 
+                           combined[DEC_opt], 
                            unit=(u.deg, u.deg), 
                            frame='icrs')
 
-coords_lofar = SkyCoord(lofar['RA'], 
-                       lofar['DEC'], 
+coords_lofar = SkyCoord(lofar[RA_rad], 
+                       lofar[DEC_rad], 
                        unit=(u.deg, u.deg), 
                        frame='icrs')
 
@@ -308,19 +324,19 @@ coords_lofar = SkyCoord(lofar['RA'],
 # The sources are grouped depending on the available photometric data.
 
 combined_legacy = (
-    ~np.isnan(combined["MAG_R"]) & 
-    ~np.isnan(combined["MAG_W1"]) & 
-    ~np.isnan(combined["MAG_W2"])
+    ~np.isnan(combined[VIS_col]) & 
+    ~np.isnan(combined[NIR_col1]) & 
+    ~np.isnan(combined[NIR_col2])
 )
 
 combined_wise =(
-    np.isnan(combined["MAG_R"]) & 
-    ~np.isnan(combined["MAG_W1"])
+    np.isnan(combined[VIS_col]) & 
+    ~np.isnan(combined[NIR_col1])
 )
 
 combined_wise2 =(
-    np.isnan(combined["MAG_R"]) & 
-    np.isnan(combined["MAG_W1"])
+    np.isnan(combined[VIS_col]) & 
+    np.isnan(combined[NIR_col1])
 )
 
 print("Total     - ", len(combined))
@@ -557,7 +573,7 @@ center_r = get_center(bin_list_r)
 if debug == True:
     print('Calculating n_m_r kde')
 
-n_m_r = get_n_m_kde(catalogue_r["MAG_R"], center_r, field.area, bandwidth=bandwidth_r)
+n_m_r = get_n_m_kde(catalogue_r[VIS_col], center_r, field.area, bandwidth=bandwidth_r)
 
 n_m_r_cs = np.cumsum(n_m_r)
 
@@ -568,7 +584,7 @@ n_m_r_cs = np.cumsum(n_m_r)
 if debug == True:
     print('Calculating q_m_r kde')
 
-q_m_r = estimate_q_m_kde(catalogue_r["MAG_R"], 
+q_m_r = estimate_q_m_kde(catalogue_r[VIS_col], 
                       center_r, 
                       n_m_r, 
                       coords_lofar, 
@@ -600,7 +616,7 @@ center_w1 = get_center(bin_list_w1)
 if debug == True:
     print('Calculating n_m_w1 kde')
 
-n_m_w1 = get_n_m_kde(catalogue_w1["MAG_W1"], center_w1, field.area, bandwidth=bandwidth_w1)
+n_m_w1 = get_n_m_kde(catalogue_w1[NIR_col1], center_w1, field.area, bandwidth=bandwidth_w1)
 
 # Commented out because plots are not needed right now #
 #plt.rcParams["figure.figsize"] = (5,5)
@@ -609,7 +625,7 @@ n_m_w1 = get_n_m_kde(catalogue_w1["MAG_W1"], center_w1, field.area, bandwidth=ba
 if debug == True:
     print('Calculating q_m_w1 kde')
     try:
-        q_m_w1 = estimate_q_m_kde(catalogue_w1["MAG_W1"], 
+        q_m_w1 = estimate_q_m_kde(catalogue_w1[NIR_col1], 
                               center_w1, 
                               n_m_w1, coords_lofar, 
                               coords_combined[combined_wise], 
@@ -639,7 +655,7 @@ center_w2 = get_center(bin_list_w2)
 if debug == True:
     print('Calculating n_m_w2 kde')
 
-n_m_w2 = get_n_m_kde(catalogue_w2["MAG_W2"], center_w2, field.area, bandwidth=bandwidth_w2)
+n_m_w2 = get_n_m_kde(catalogue_w2[NIR_col2], center_w2, field.area, bandwidth=bandwidth_w2)
 
 # Commented out because plots are not needed right now #
 #plt.rcParams["figure.figsize"] = (5,5)
@@ -648,7 +664,7 @@ n_m_w2 = get_n_m_kde(catalogue_w2["MAG_W2"], center_w2, field.area, bandwidth=ba
 if debug == True:
     print('Calculating q_m_w2 kde')
     try:
-        q_m_w2 = estimate_q_m_kde(catalogue_w2["MAG_W2"], 
+        q_m_w2 = estimate_q_m_kde(catalogue_w2[NIR_col2], 
                               center_w2, 
                               n_m_w2, coords_lofar, 
                               coords_combined[combined_wise2], 
@@ -720,15 +736,15 @@ def ml(i):
     #print('index of ml', i)
     idx_0 = idx_i[idx_lofar == i]
     d2d_0 = d2d[idx_lofar == i]
-    mag = catalogue_r["MAG_R"][idx_0]
+    mag = catalogue_r[VIS_col][idx_0]
     
-    lofar_ra = lofar[i]["RA"]
-    lofar_dec = lofar[i]["DEC"]
-    lofar_pa = lofar[i]["PA"]
-    lofar_maj_err = lofar[i]["E_Maj"]
-    lofar_min_err = lofar[i]["E_Min"]
-    c_ra = catalogue_r["RA"][idx_0]
-    c_dec = catalogue_r["DEC"][idx_0]
+    lofar_ra = lofar[i][RA_rad]
+    lofar_dec = lofar[i][DEC_rad]
+    lofar_pa = lofar[i][PA_rad]
+    lofar_maj_err = lofar[i][E_Maj_rad]
+    lofar_min_err = lofar[i][E_Min_rad]
+    c_ra = catalogue_r[RA_opt][idx_0]
+    c_dec = catalogue_r[DEC_opt][idx_0]
     c_ra_err = np.ones_like(c_ra)*0.6/3600.
     c_dec_err = np.ones_like(c_ra)*0.6/3600.
 
@@ -887,15 +903,15 @@ lofar["lr_index_w1"] = np.nan             # Index of the PanSTARRS source in com
 def ml_w1(i):
     idx_0 = idx_i_w1[idx_lofar_w1 == i]
     d2d_0 = d2d_w1[idx_lofar_w1 == i]
-    mag = catalogue_w1["MAG_W1"][idx_0]
+    mag = catalogue_w1[NIR_col1][idx_0]
     
-    lofar_ra = lofar[subsample_w1][i]["RA"]
-    lofar_dec = lofar[subsample_w1][i]["DEC"]
-    lofar_pa = lofar[subsample_w1][i]["PA"]
-    lofar_maj_err = lofar[subsample_w1][i]["E_Maj"]
-    lofar_min_err = lofar[subsample_w1][i]["E_Min"]
-    c_ra = catalogue_w1["RA"][idx_0]
-    c_dec = catalogue_w1["DEC"][idx_0]
+    lofar_ra = lofar[subsample_w1][i][RA_rad]
+    lofar_dec = lofar[subsample_w1][i][DEC_rad]
+    lofar_pa = lofar[subsample_w1][i][PA_rad]
+    lofar_maj_err = lofar[subsample_w1][i][E_Maj_rad]
+    lofar_min_err = lofar[subsample_w1][i][E_Min_rad]
+    c_ra = catalogue_w1[RA_opt][idx_0]
+    c_dec = catalogue_w1[DEC_opt][idx_0]
     c_ra_err = np.ones_like(c_ra)*0.6/3600.
     c_dec_err = np.ones_like(c_ra)*0.6/3600.
     
@@ -1049,15 +1065,15 @@ lofar["lr_index_w2"] = np.nan             # Index of the PanSTARRS source in com
 def ml_w2(i):
     idx_0 = idx_i_w2[idx_lofar_w2 == i]
     d2d_0 = d2d_w2[idx_lofar_w2 == i]
-    mag = catalogue_w2["MAG_W2"][idx_0]
+    mag = catalogue_w2[NIR_col2][idx_0]
     
-    lofar_ra = lofar[subsample_w2][i]["RA"]
-    lofar_dec = lofar[subsample_w2][i]["DEC"]
-    lofar_pa = lofar[subsample_w2][i]["PA"]
-    lofar_maj_err = lofar[subsample_w2][i]["E_Maj"]
-    lofar_min_err = lofar[subsample_w2][i]["E_Min"]
-    c_ra = catalogue_w2["RA"][idx_0]
-    c_dec = catalogue_w2["DEC"][idx_0]
+    lofar_ra = lofar[subsample_w2][i][RA_rad]
+    lofar_dec = lofar[subsample_w2][i][DEC_rad]
+    lofar_pa = lofar[subsample_w2][i][PA_rad]
+    lofar_maj_err = lofar[subsample_w2][i][E_Maj_rad]
+    lofar_min_err = lofar[subsample_w2][i][E_Min_rad]
+    c_ra = catalogue_w2[RA_opt][idx_0]
+    c_dec = catalogue_w2[DEC_opt][idx_0]
     c_ra_err = np.ones_like(c_ra)*0.6/3600.
     c_dec_err = np.ones_like(c_ra)*0.6/3600.
     
@@ -1265,8 +1281,8 @@ numbers_combined_bins
 
 # Get the colour category and magnitudes for the matched LOFAR sources
 
-bandwidth_colour = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
-        0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+bandwidth_colour = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 
+        0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
 
 if debug == True:
     print('calculating n_m for w1, w2, and r')
@@ -1274,15 +1290,15 @@ if debug == True:
 n_m = []
 
 # W2 only sources
-n_m.append(get_n_m_kde(combined["MAG_W2"][combined["category"] == 0], 
+n_m.append(get_n_m_kde(combined[NIR_col2][combined["category"] == 0], 
                        centers[0], field.area, bandwidth=bandwidth_colour[0]))
 # W1 only sources
-n_m.append(get_n_m_kde(combined["MAG_W1"][combined["category"] == 1], 
+n_m.append(get_n_m_kde(combined[NIR_col1][combined["category"] == 1], 
                        centers[1], field.area, bandwidth=bandwidth_colour[1]))
 
 # Rest of the sources
 for i in range(2, len(colour_bin_def)):
-    n_m.append(get_n_m_kde(combined["MAG_R"][combined["category"] == i], 
+    n_m.append(get_n_m_kde(combined[VIS_col][combined["category"] == i], 
                            centers[i], field.area, bandwidth=bandwidth_colour[i]))
 
 # Commented out because plots are not needed right now #
@@ -1301,16 +1317,16 @@ if debug == True:
     print('setting up columns for filling in each iteration')
 
 lofar["category"] = np.nan
-lofar["MAG_W2"] = np.nan
-lofar["MAG_W1"] = np.nan
-lofar["MAG_R"] = np.nan
+lofar[NIR_col2] = np.nan
+lofar[NIR_col1] = np.nan
+lofar[VIS_col] = np.nan
 
 c = ~np.isnan(lofar["lr_index_1"])
 indices = lofar["lr_index_1"][c].astype(int)
 lofar["category"][c] = combined[indices]["category"]
-lofar["MAG_W2"][c] = combined[indices]["MAG_W2"]
-lofar["MAG_W1"][c] = combined[indices]["MAG_W1"]
-lofar["MAG_R"][c] = combined[indices]["MAG_R"]
+lofar[NIR_col2][c] = combined[indices][NIR_col2]
+lofar[NIR_col1][c] = combined[indices][NIR_col1]
+lofar[VIS_col][c] = combined[indices][VIS_col]
 
 # The next parameter represent the number of matched LOFAR sources in each colour category.
 
@@ -1335,20 +1351,20 @@ q_m = []
 radius = 15. 
 
 # W2 only sources
-q_m.append(get_q_m_kde(lofar["MAG_W2"][lofar["category"] == 0], 
+q_m.append(get_q_m_kde(lofar[NIR_col2][lofar["category"] == 0], 
                    centers[0], 
                    radius=radius,
                    bandwidth=bandwidth_colour[0]))
 
 # W1 only sources
-q_m.append(get_q_m_kde(lofar["MAG_W1"][lofar["category"] == 1], 
+q_m.append(get_q_m_kde(lofar[NIR_col1][lofar["category"] == 1], 
                    centers[1], 
                    radius=radius,
                    bandwidth=bandwidth_colour[1]))
 
 # Rest of the sources
 for i in range(2, len(numbers_lofar_combined_bins)):
-    q_m.append(get_q_m_kde(lofar["MAG_R"][lofar["category"] == i], 
+    q_m.append(get_q_m_kde(lofar[VIS_col][lofar["category"] == i], 
                    centers[i], 
                    radius=radius,
                    bandwidth=bandwidth_colour[i]))
@@ -1436,17 +1452,17 @@ def apply_ml(i, likelihood_ratio_function):
     d2d_0 = d2d[idx_lofar == i]
     
     category = catalogue["category"][idx_0].astype(int)
-    mag = catalogue["MAG_R"][idx_0]
-    mag[category == 0] = catalogue["MAG_W2"][idx_0][category == 0]
-    mag[category == 1] = catalogue["MAG_W1"][idx_0][category == 1]
+    mag = catalogue[VIS_col][idx_0]
+    mag[category == 0] = catalogue[NIR_col2][idx_0][category == 0]
+    mag[category == 1] = catalogue[NIR_col1][idx_0][category == 1]
     
-    lofar_ra = lofar[i]["RA"]
-    lofar_dec = lofar[i]["DEC"]
-    lofar_pa = lofar[i]["PA"]
-    lofar_maj_err = lofar[i]["E_Maj"]
-    lofar_min_err = lofar[i]["E_Min"]
-    c_ra = catalogue["RA"][idx_0]
-    c_dec = catalogue["DEC"][idx_0]
+    lofar_ra = lofar[i][RA_rad]
+    lofar_dec = lofar[i][DEC_rad]
+    lofar_pa = lofar[i][PA_rad]
+    lofar_maj_err = lofar[i][E_Maj_rad]
+    lofar_min_err = lofar[i][E_Min_rad]
+    c_ra = catalogue[RA_opt][idx_0]
+    c_dec = catalogue[DEC_opt][idx_0]
     c_ra_err = np.ones_like(c_ra)*0.6/3600.
     c_dec_err = np.ones_like(c_ra)*0.6/3600.
     
@@ -1530,16 +1546,16 @@ n_changes # Old: 3135
 
 # Clear aux columns
 lofar["category"] = np.nan
-lofar["MAG_W2"] = np.nan
-lofar["MAG_W1"] = np.nan
-lofar["MAG_R"] = np.nan
+lofar[NIR_col2] = np.nan
+lofar[NIR_col1] = np.nan
+lofar[VIS_col] = np.nan
 
 c = ~np.isnan(lofar["lr_index_sel_2"])
 indices = lofar["lr_index_sel_2"][c].astype(int)
 lofar["category"][c] = combined[indices]["category"]
-lofar["MAG_W2"][c] = combined[indices]["MAG_W2"]
-lofar["MAG_W1"][c] = combined[indices]["MAG_W1"]
-lofar["MAG_R"][c] = combined[indices]["MAG_R"]
+lofar[NIR_col2][c] = combined[indices][NIR_col2]
+lofar[NIR_col1][c] = combined[indices][NIR_col1]
+lofar[VIS_col][c] = combined[indices][VIS_col]
 
 numbers_lofar_combined_bins = np.array([np.sum(lofar["category"] == c) 
                                         for c in range(len(numbers_combined_bins))])
@@ -1640,18 +1656,18 @@ for j in range(10):
     # q_m
     q_m = []
     # W2 only sources
-    q_m.append(get_q_m_kde(lofar["MAG_W2"][lofar["category"] == 0], 
+    q_m.append(get_q_m_kde(lofar[NIR_col2][lofar["category"] == 0], 
                        centers[0], 
                        radius=radius,
                        bandwidth=bandwidth_colour[0]))
     # W1 only sources
-    q_m.append(get_q_m_kde(lofar["MAG_W1"][lofar["category"] == 1], 
+    q_m.append(get_q_m_kde(lofar[NIR_col1][lofar["category"] == 1], 
                        centers[1], 
                        radius=radius,
                        bandwidth=bandwidth_colour[1]))
     # Rest of the sources
     for i in range(2, len(numbers_lofar_combined_bins)):
-        q_m.append(get_q_m_kde(lofar["MAG_R"][lofar["category"] == i], 
+        q_m.append(get_q_m_kde(lofar[VIS_col][lofar["category"] == i], 
                        centers[i], 
                        radius=radius,
                        bandwidth=bandwidth_colour[i]))
@@ -1714,16 +1730,16 @@ for j in range(10):
     ## Enter changes into the catalogue
     # Clear aux columns
     lofar["category"] = np.nan
-    lofar["MAG_W2"] = np.nan
-    lofar["MAG_W1"] = np.nan
-    lofar["MAG_R"] = np.nan
+    lofar[NIR_col2] = np.nan
+    lofar[NIR_col1] = np.nan
+    lofar[VIS_col] = np.nan
     # Update data
     c = ~np.isnan(lofar["lr_index_sel_{}".format(iteration)])
     indices = lofar["lr_index_sel_{}".format(iteration)][c].astype(int)
     lofar["category"][c] = combined[indices]["category"]
-    lofar["MAG_W2"][c] = combined[indices]["MAG_W2"]
-    lofar["MAG_W1"][c] = combined[indices]["MAG_W1"]
-    lofar["MAG_R"][c] = combined[indices]["MAG_R"]
+    lofar[NIR_col2][c] = combined[indices][NIR_col2]
+    lofar[NIR_col1][c] = combined[indices][NIR_col1]
+    lofar[VIS_col][c] = combined[indices][VIS_col]
     # Save the data
     if save_intermediate:
         lofar.write("{}/lofar_m{}.fits".format(idp, iteration), format="fits", overwrite = True)
