@@ -299,9 +299,8 @@ for i in range(len(colour_bin_def)):
     combined["category"][colour_bin_def[i]["condition"]] = i
 
 
-total = len(combined)
-n_nans = combined["category"].isna().sum()
-print(f"NaNs in 'category': {n_nans} / {total} ({n_nans / total:.2%})")
+n_nans = np.isnan(combined["category"]).sum()
+print(f"NaNs in 'category': {n_nans} / {len(combined)} ({n_nans / len(combined):.2%})")
 
 
 ## Define number of CPUs
