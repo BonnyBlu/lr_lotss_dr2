@@ -315,6 +315,17 @@ def apply_ml(i, likelihood_ratio_function):
     d2d_0 = d2d[idx_lofar == i]
     
     category = combined["category"][idx_0].astype(int)
+
+    # Filter out of the invalid categories (== -1) added earlier
+    valid = category >= 0
+    if not np.any(valid):
+        return None  # Nothing valid to process
+
+    # Apply the filter to everything that depends on idx_0
+    idx_0 = idx_0[valid]
+    d2d_0 = d2d_0[valid]
+    category = category[valid]
+
     mag = combined[VIS_col][idx_0]
     mag[category == 0] = combined[NIR_col2][idx_0][category == 0]
     mag[category == 1] = combined[NIR_col1][idx_0][category == 1]
