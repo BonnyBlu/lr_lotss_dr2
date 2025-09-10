@@ -294,13 +294,9 @@ colour_bin_def.append({"name":"{} to inf".format(colour_limits[-1]),
                     "condition": (combined["colour"] >= colour_limits[-1])})
 
 # Apply the categories
-combined["category"] = np.nan
+combined["category"] = =1 # changed from np.nan to cover for unmatched entries and will trigger a 0 probability
 for i in range(len(colour_bin_def)):
     combined["category"][colour_bin_def[i]["condition"]] = i
-
-
-n_nans = np.isnan(combined["category"]).sum()
-print(f"NaNs in 'category': {n_nans} / {len(combined)} ({n_nans / len(combined):.2%})")
 
 
 ## Define number of CPUs

@@ -517,6 +517,9 @@ class MultiMLEstimator(object):
     def get_qm(self, m, k):
         """Get q(m)
         """
+        if k < 0 or k >= len(self.center):  # Safe gaurd added for any possible NAN values occuring, this produces a 0 probablilty.
+            print(f"Warning: Invalid category index k={k} — returning 0")
+            return 0
         return np.interp(m, self.center[k], self.q_m[k] * self.q0[k])
 
     def get_nm(self, m, k):
