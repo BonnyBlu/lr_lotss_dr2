@@ -248,12 +248,12 @@ print("Load input catalogue")
 lofar = Table.read(input_catalogue)
 
 ## Get the coordinates
-coords_combined = SkyCoord(combined['RA'], 
-                        combined['DEC'], 
+coords_combined = SkyCoord(combined[RA_opt], 
+                        combined[DEC_opt], 
                         unit=(u.deg, u.deg), 
                         frame='icrs')
-coords_lofar = SkyCoord(lofar['RA'], 
-                    lofar['DEC'], 
+coords_lofar = SkyCoord(lofar[RA_rad], 
+                    lofar[DEC_rad], 
                     unit=(u.deg, u.deg), 
                     frame='icrs')
 
