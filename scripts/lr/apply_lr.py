@@ -356,12 +356,27 @@ def ml(i):
     return apply_ml(i, likelihood_ratio)
 print("Run LR")
 res = parallel_process(idx_lofar_unique, ml, n_jobs=1)
-lofar["lr"] = np.nan                   # Likelihood ratio
-lofar["lr_dist"] = np.nan              # Distance to the selected source
-lofar["lr_index"] = np.nan             # Index of the optical source in combined
-(lofar["lr_index"][idx_lofar_unique], 
-    lofar["lr_dist"][idx_lofar_unique], 
-    lofar["lr"][idx_lofar_unique]) = list(map(list, zip(*res)))
+
+# Prepare output arrays
+lofar["lr"] = np.nan
+lofar["lr_dist"] = np.nan
+lofar["lr_index"] = np.nan
+
+# Filter out None and keep track of corresponding LOFAR indices
+valid_results = []
+valid_indices = []
+
+for i, r in zip(idx_lofar_unique, res):
+    if r is not None:
+        valid_indices.append(i)
+        valid_results.append(r)
+
+# Unpack results into the LOFAR table
+if valid_results:
+    lr_idx, lr_dist, lr_val = zip(*valid_results)
+    lofar["lr_index"][valid_indices] = lr_idx
+    lofar["lr_dist"][valid_indices] = lr_dist
+    lofar["lr"][valid_indices] = lr_val
 
 ## 
 lofar["lrt"] = lofar["lr"]
