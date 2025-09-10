@@ -294,7 +294,7 @@ colour_bin_def.append({"name":"{} to inf".format(colour_limits[-1]),
                     "condition": (combined["colour"] >= colour_limits[-1])})
 
 # Apply the categories
-combined["category"] = =1 # changed from np.nan to cover for unmatched entries and will trigger a 0 probability
+combined["category"] = -1 # changed from np.nan to cover for unmatched entries and will trigger a 0 probability
 for i in range(len(colour_bin_def)):
     combined["category"][colour_bin_def[i]["condition"]] = i
 
