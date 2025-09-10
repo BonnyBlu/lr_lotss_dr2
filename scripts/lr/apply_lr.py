@@ -53,6 +53,21 @@ nearest = lr_inputs['nearest']
 #print(gauss)
 #print(nearest)
 
+# This calls the column names in from the input file so that they are not hard coded throughout the rest of the script
+
+VIS_col = lr_inputs['VIS_col']
+NIR_col1 = lr_inputs['NIR_col1']
+NIR_col2 = lr_inputs['NIR_col2']
+RA_rad = lr_inputs['RA_rad']
+DEC_rad = lr_inputs['DEC_rad']
+RA_opt = lr_inputs['RA_opt']
+DEC_opt = lr_inputs['DEC_opt']
+PA_rad = lr_inputs['PA_rad']
+Maj_rad = lr_inputs['Maj_rad']
+E_Maj_rad = lr_inputs['E_Maj_rad']
+E_Min_rad = lr_inputs['E_Min_rad']
+
+
 # Using .yml input file
 print('gaussian set to', gauss)
 
@@ -69,7 +84,8 @@ if lr_inputs.get("nearest", False):
     suffix += "_nn"
 
 # Construct the log file name
-job_id = os.environ.get("SLURM_JOB_ID", "local")  # fallback to "local" if running outside SLURM
+#job_id = os.environ.get("SLURM_JOB_ID", "local")  # fallback to "local" if running outside SLURM
+job_id = 'eu_001'
 
 log_file = os.path.join(data_path, "outputs", "tmp", f"lr_outputs_{job_id}{suffix}.yml")
 
@@ -243,20 +259,21 @@ coords_lofar = SkyCoord(lofar['RA'],
 
 ## Get the colours for the combined catalogue
 print("Get auxiliary columns")
-combined["colour"] = combined["MAG_R"] - combined["MAG_W1"]
+combined["colour"] = combined[VIS_col] - combined[NIR_col1]
 combined_aux_index = np.arange(len(combined))
 combined_legacy = (
-    ~np.isnan(combined["MAG_R"]) & 
-    ~np.isnan(combined["MAG_W1"]) & 
-    ~np.isnan(combined["MAG_W2"])
+    ~np.isnan(combined[VIS_col]) & 
+    ~np.isnan(combined[NIR_col1]) & 
+    ~np.isnan(combined[NIR_col2])
 )
 combined_wise =(
-    np.isnan(combined["MAG_R"]) & 
-    ~np.isnan(combined["MAG_W1"])
+    np.isnan(combined[VIS_col]) & 
+    ~np.isnan(combined[NIR_col1])
 )
 combined_wise2 =(
-    np.isnan(combined["MAG_R"]) & 
-    np.isnan(combined["MAG_W1"])
+    np.isnan(combined[VIS_col]) & 
+    np.isnan(combined[NIR_col1])
+    ~np.isnan(combined[NIR_col2])
 )
 
 # Start with the W2-only, W1-only, and "less than lower colour" bins
@@ -297,17 +314,17 @@ def apply_ml(i, likelihood_ratio_function):
     d2d_0 = d2d[idx_lofar == i]
     
     category = combined["category"][idx_0].astype(int)
-    mag = combined["MAG_R"][idx_0]
-    mag[category == 0] = combined["MAG_W2"][idx_0][category == 0]
-    mag[category == 1] = combined["MAG_W1"][idx_0][category == 1]
+    mag = combined[VIS_col][idx_0]
+    mag[category == 0] = combined[NIR_col2][idx_0][category == 0]
+    mag[category == 1] = combined[NIR_col1][idx_0][category == 1]
     
-    lofar_ra = lofar[i]["RA"]
-    lofar_dec = lofar[i]["DEC"]
-    lofar_pa = lofar[i]["PA"]
-    lofar_maj_err = lofar[i]["E_Maj"]
-    lofar_min_err = lofar[i]["E_Min"]
-    c_ra = combined["RA"][idx_0]
-    c_dec = combined["DEC"][idx_0]
+    lofar_ra = lofar[i][RA_rad]
+    lofar_dec = lofar[i][DEC_rad]
+    lofar_pa = lofar[i][PA_rad]
+    lofar_maj_err = lofar[i][E_Maj_rad]
+    lofar_min_err = lofar[i][E_Min_rad]
+    c_ra = combined[RA_opt][idx_0]
+    c_dec = combined[DEC_opt][idx_0]
     c_ra_err = np.ones_like(c_ra)*0.6/3600.
     c_dec_err = np.ones_like(c_ra)*0.6/3600.
     
@@ -370,10 +387,10 @@ for col in pwl.colnames:
             pwl[col].fill_value = 1e+20
         
 print("Save output")
-pwl["RA_2"].name = "ra"
-pwl["DEC_2"].name = "dec"
-pwl["RA_1"].name = "RA"
-pwl["DEC_1"].name = "DEC"
+pwl[RA_opt].name = "ra"
+pwl[DEC_opt].name = "dec"
+pwl[RA_rad].name = "RA"
+pwl[DEC_rad].name = "DEC"
 pwl.filled().write(output_catalogue, format="fits", overwrite=True)
 
     
