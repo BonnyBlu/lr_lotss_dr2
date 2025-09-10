@@ -298,6 +298,12 @@ combined["category"] = np.nan
 for i in range(len(colour_bin_def)):
     combined["category"][colour_bin_def[i]["condition"]] = i
 
+
+total = len(combined)
+n_nans = combined["category"].isna().sum()
+print(f"NaNs in 'category': {n_nans} / {total} ({n_nans / total:.2%})")
+
+
 ## Define number of CPUs
 n_cpus_total = multiprocessing.cpu_count()
 n_cpus = max(1, n_cpus_total-1)
