@@ -1,37 +1,48 @@
 ---
-defaults: &common_settings                                                                      # create common files
-    radio_cat: 'LoTSS_DR2_v110_masked.srl.fits'
-    opt_cat: 'dr2_combined.fits'
-    gaussian_cat: 'LoTSS_DR2_v110.gaus.fits'
+defaults: &common_settings                                                                                          # create common files
+    radio_cat: 'LoTSS_DR3_v0.3.srl.filtered.fits'
+    opt_cat: 'stacked_duped_masked.fits'
+    gaussian_cat: 'LoTSS_DR3_v0.3.gaus.filtered.fits'
 
     
 hp_inputs:
-    <<: *common_settings                                                                        # add common files
+    <<: *common_settings                                                                                        # add common files
 
 
 lr_inputs:
-    <<: *common_settings                                                                        # add common files
-    gaussian: False                                                                             # working with gaussian catalogues
-    nearest: False                                                                              # Working with the nearest neighbour HP regions
-    thres_calc: True                                                                            # Calculating the threshold (i.e. running the first lr script)
-    apply_calc: True                                                                            # Determines if the apply_lr.py script runs
-    max_major: 15                                                                               # maximum radius
-    radius: 15                                                                                  # search radius of the likelihood ratio
-    colour_limits_post: [0, 0.5, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.5, 4.0]     # boundaries of colour bins
-    params_name: 'params_'                                                                      # params save file
-    opt_nn_in: 'optical_nn_'                                                                    # optical input catalogue
-    rad_in: 'radio_'                                                                            # radio input catalogue
-    gauss_in: 'gaussian_'                                                                       # gaussian input catalogue
-    rad_nn_in: 'radio_nn_'                                                                      # radio nearest neighbours input catalogue
-    gauss_nn_in: 'gaussian_nn_'                                                                 # gaussian nearest neighbours input catalogue
+    <<: *common_settings                                                                                        # add common files
+    gaussian: True                                                                                             # working with gaussian catalogues
+    nearest: False                                                                                              # Working with the nearest neighbour HP regions
+    thres_calc: True                                                                                            # Calculating the threshold (i.e. running the first lr script)
+    apply_calc: True                                                                                            # Determines if the apply_lr.py script runs
+    max_major: 15                                                                                               # maximum radius
+    radius: 15                                                                                                  # search radius of the likelihood ratio
+    colour_limits_post: [0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0]                   # boundaries of colour bins
+    params_name: 'params_'                                                                                      # params save file
+    opt_nn_in: 'optical_nn_'                                                                                    # optical input catalogue
+    rad_in: 'radio_'                                                                                            # radio input catalogue
+    gauss_in: 'gaussian_'                                                                                       # gaussian input catalogue
+    rad_nn_in: 'radio_nn_'                                                                                      # radio nearest neighbours input catalogue
+    gauss_nn_in: 'gaussian_nn_'                                                                                 # gaussian nearest neighbours input catalogue
+    VIS_col: 'mag_VIS'                                                                                          # the name of the visible/r/i band column
+    NIR_col1: 'mag_H'                                                                                           # the name of the W1/NIR band column (first/main)
+    NIR_col2: 'mag_NIR'                                                                                         # the name of the W2/NIR band column (second)
+    RA_rad: 'RA'                                                                                                # column name for RA in radio catalogue
+    DEC_rad: 'DEC'                                                                                              # column name for DEC in radio catalogue
+    RA_opt: 'RIGHT_ASCENSION'                                                                                   # column name for RA in optical catalogue
+    DEC_opt: 'DECLINATION'                                                                                      # column name for DEC in optical catalogue
+    PA_rad: 'PA'                                                                                                # column name for position angle in radio catalogue
+    Maj_rad: 'Maj'                                                                                              # column name for Major axis in radio catalogue
+    E_Maj_rad: 'E_Maj'                                                                                          # column name for the error on the Major axis in the radio catalogue
+    E_Min_rad: 'E_Min'                                                                                          # column name for the error on the Minor axis in the radio catalogue
 
 
 gbc_inputs:
-    <<: *common_settings                                                                        # add common files
+    <<: *common_settings                                                                                        # add common files
 
 
 rlxid_inputs:
-    <<: *common_settings                                                                        # add common files
+    <<: *common_settings                                                                                        # add common files
     
 
 
