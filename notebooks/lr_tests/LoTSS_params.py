@@ -340,7 +340,8 @@ combined_wise2 =(
     ~np.isnan(combined[NIR_col2])
 )
 
-print("Total     - ", len(combined))
+print("Total rad - ", len(lofar_full))
+print("Total opt - ", len(combined))
 print("R and W1  - ", np.sum(combined_legacy))
 print("Only WISE - ", np.sum(combined_wise))
 print("Only W2   - ", np.sum(combined_wise2))
