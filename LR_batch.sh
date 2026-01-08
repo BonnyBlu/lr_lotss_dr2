@@ -206,7 +206,7 @@ if [ "$THRES_CALC" = "True" ]; then
         singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python "${WORKING_DIR}/scripts/merge_yml_results.py" "${WORKING_DIR}" "${SUFFIX}"
         echo "Merge complete. Output stored in outputs/lr_outputs${SUFFIX}.yml"
     else
-        echo "Error: ${WORKING_DIR}/merge_yml_results.py not found. Exiting." >&2
+        echo "Error: ${WORKING_DIR}/scripts/merge_yml_results.py not found. Exiting." >&2
         exit 1
     fi
 
@@ -220,7 +220,7 @@ if [ "$THRES_CALC" = "True" ]; then
         singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python "${WORKING_DIR}/scripts/threshold_stats.py" "${WORKING_DIR}/data/outputs/lr_outputs${SUFFIX}.yml" "${SUFFIX}"
         echo "Average threshold for ${SUFFIX} calculated, ready for LR."
     else
-        echo "Error: ${WORKING_DIR}/threshold_stats.py not found. Exiting." >&2
+        echo "Error: ${WORKING_DIR}/scripts/threshold_stats.py not found. Exiting." >&2
         exit 1
 fi
 
@@ -344,7 +344,7 @@ fi
 echo "All threshold jobs complete. Merging results..."
 
 #python ${WORKING_DIR}/merge_yml_results.py "${WORKING_DIR}" "_errors${SUFFIX}"
-singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python ${WORKING_DIR}/merge_yml_results.py "${WORKING_DIR}" "_errors${SUFFIX}"
+singularity exec --bind "${WORKING_DIR}","${WORKING_DIR}/data:/Documents/lr_lotss_dr2/data/" "${SINGULARITY_PATH}" python ${WORKING_DIR}/scripts/merge_yml_results.py "${WORKING_DIR}" "_errors${SUFFIX}"
 echo "Merge complete. Output stored in outputs/lr_outputs_errors${SUFFIX}.yml"
 
 
