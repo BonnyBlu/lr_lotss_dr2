@@ -235,10 +235,10 @@ if [ "$APPLY_CALC" = "True" ]; then
 
     ## Checking that the averages have successfully been calculated before moving on to the LR calculation
 
-    YAML_FILE="${WORKING_DIR}/data/outputs/average_thresholds.yml"
+    YAML_FILE="${WORKING_DIR}/data/outputs/average_stats.yml"
 
-    if [[ -f "${YAML_FILE}" ]] && grep -q "${SUFFIX}" "${YAML_FILE}"; then
-        echo "YAML file exists and contains the averages for ${SUFFIX}. Proceeding..."
+    if [[ -f "${YAML_FILE}" ]] && grep -q "${SUFFIX}:" "${YAML_FILE}"; then
+        echo "average_stats.yml exists and contains stats for ${SUFFIX}. Proceeding..."
     else
         echo "Threshold calculations have not been averaged. Please run script again with THRES_CALC = True set in the config.yml file. Exiting"
         exit 1

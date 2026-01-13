@@ -6,53 +6,51 @@
 
 import yaml
 import glob
+from pathlib import Path
 import os
 import sys
 
 ##################
 
 ### Files and inputs ###
-suffix = sys.argv[2] if len(sys.argv) > 1 else ""
-suffix = suffix.strip()
+suffix = sys.argv[2].strip() if len(sys.argv) >= 3 else ""
 
-dir = sys.argv[1]                               # Working directory to change to and run the code from
-os.chdir(dir)                                   # Move to working/data directory (should be bound to container)
+if len(sys.argv) >= 2:
+    base_path = Path(sys.argv[1]).resolve()
+else:
+    try:
+        base_path = Path(__file__).resolve().parents[1]
+    except NameError:
+        base_path = Path.cwd()
 
+os.chdir(base_path)
 
-try:
-    BASEPATH = os.path.dirname(os.path.realpath(__file__))
-    data_path = os.path.join(BASEPATH, "data")
-except NameError:
-    if os.path.exists("data"):
-        BASEPATH = "."
-        data_path = os.path.join(BASEPATH, "data")
-    else:
-        BASEPATH = os.getcwd()
-        data_path = os.path.join(BASEPATH, "..", "..", "data")
-
-temp_dir = os.path.join(data_path,"outputs", "tmp")
-out_file = os.path.join(data_path, "outputs", f"lr_outputs{suffix}.yml")
+data_path = base_path / "data"
+temp_dir = data_path / "tmp"
+out_file = data_path / "outputs" / f"lr_outputs{suffix}.yml"
+pattern = f"lr_outputs_*{suffix}.yml" if suffix else "lr_outputs_*.yml"
 
 ### Main code ###
 
 merged_data = {}
 
-for path in glob.glob(os.path.join(temp_dir, "lr_outputs_*.yml")):
-    with open(path) as f:
+# Read all temp files
+for path in temp_dir.glob(pattern):
+    with path.open() as f:
         data = yaml.safe_load(f)
         if data is None:
             continue
-        job_id = os.path.splitext(os.path.basename(path))[0].replace("lr_outputs_", "")
+        job_id = path.stem.replace("lr_outputs_", "")
         merged_data[job_id] = data
 
 # Write merged file
-os.makedirs(os.path.dirname(out_file), exist_ok=True)
-with open(out_file, "w") as f:
+out_file.parent.mkdir(parents=True, exist_ok=True)
+with out_file.open("w") as f:
     yaml.safe_dump(merged_data, f)
 
 # Optional cleanup
-for path in glob.glob(os.path.join(temp_dir, "lr_outputs_*.yml")):
-    os.remove(path)
+for path in temp_dir.glob(pattern):
+    path.unlink()
 
 print(f"Merged {len(merged_data)} files into {out_file}")
 

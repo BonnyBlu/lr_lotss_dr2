@@ -11,7 +11,7 @@ from pathlib import Path
 ##################################
 
 if len(sys.argv) != 3:
-    print("Usage: python3 threshold_stats_extractor.py <input_file.yml> <suffix>")
+    print("Usage: python3 threshold_stats.py <input_file.yml> <suffix>")
     sys.exit(1)
 
 yml_file = sys.argv[1]
@@ -119,20 +119,37 @@ if thresholds_zoom:
 ## Inject stats into YAML-ready data structure
 ##################################
 
-data['averages'] = stats
-data['averages_0to1'] = zoom
-data['stats_summary'] = {
+stats_summary = {
     'total_entries': int(total_entries),
     'missing_thresholds': int(missing_entries),
     'valid_thresholds': int(len(thresholds))
+}
+
+summary_entry = {
+    'source_file': input_path.name,
+    'averages': stats,
+    'averages_0to1': zoom,
+    'stats_summary': stats_summary
 }
 
 ##################################
 ## Write back to the original YAML file
 ##################################
 
-with open(input_path, 'w') as f:
-    yaml.safe_dump(data, f, sort_keys=False)
+summary_path = input_path.parent / "average_stats.yml"
 
-print(f"Stats added to: {input_path}")
+# Load existing summary (if any)
+try:
+    with open(summary_path, 'r') as f:
+        summary = yaml.safe_load(f) or {}
+except FileNotFoundError:
+    summary = {}
+
+# Store stats under this suffix key
+summary[suffix] = summary_entry
+
+with open(summary_path, 'w') as f:
+    yaml.safe_dump(summary, f, sort_keys=False)
+
+print(f"Stats for {suffix} written to: {summary_path}")
 
