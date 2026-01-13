@@ -5,6 +5,7 @@ import yaml
 import numpy as np
 import scipy.stats
 from pathlib import Path
+import re
 
 ##################################
 ## Check command-line arguments
@@ -33,20 +34,42 @@ thresholds = []
 total_entries = 0
 missing_entries = 0
 
-for key, val in data.items():
-    total_entries += 1
-    logs = val.get('logs', [])
-    found = False
-    for log in logs:
-        if 'threshold' in log:
-            try:
-                thresholds.append(float(log['threshold']))
-                found = True
-                break
-            except (ValueError, TypeError):
-                continue
-    if not found:
-        missing_entries += 1
+hp_key_re = re.compile(r"^hp_\d+$")
+
+for top_key, top_val in (data or {}).items():
+    if not isinstance(top_val, dict) or len(top_val) == 0:
+        continue
+
+    # Case B: top level is already hp_###
+    if hp_key_re.match(str(top_key)):
+        hp_blocks = {top_key: top_val}
+    else:
+        # Case A: top level is job_id, value is dict of hp_###
+        hp_blocks = top_val
+
+    for hp_key, hp_val in hp_blocks.items():
+        # Only process keys that look like hp_###
+        if not hp_key_re.match(str(hp_key)):
+            continue
+
+        total_entries += 1
+
+        logs = []
+        if isinstance(hp_val, dict):
+            logs = hp_val.get("logs", []) or []
+
+        found = False
+        for log in logs:
+            if isinstance(log, dict) and "threshold" in log:
+                try:
+                    thresholds.append(float(log["threshold"]))
+                    found = True
+                    break
+                except (ValueError, TypeError):
+                    pass
+
+        if not found:
+            missing_entries += 1
 
 ##################################
 ## Compute statistics with native Python types and YAML-safe values
