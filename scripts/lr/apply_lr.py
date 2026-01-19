@@ -257,46 +257,109 @@ coords_lofar = SkyCoord(lofar[RA_rad],
                     unit=(u.deg, u.deg), 
                     frame='icrs')
 
-## Get the colours for the combined catalogue
-print("Get auxiliary columns")
-combined["colour"] = combined[VIS_col] - combined[NIR_col1]
 combined_aux_index = np.arange(len(combined))
-combined_legacy = (
-    ~np.isnan(combined[VIS_col]) & 
-    ~np.isnan(combined[NIR_col1]) & 
-    ~np.isnan(combined[NIR_col2])
-)
-combined_wise =(
-    np.isnan(combined[VIS_col]) & 
-    ~np.isnan(combined[NIR_col1])
-)
-combined_wise2 =(
-    np.isnan(combined[VIS_col]) & 
-    np.isnan(combined[NIR_col1]) &
-    ~np.isnan(combined[NIR_col2])
-)
 
-# Start with the W2-only, W1-only, and "less than lower colour" bins
-colour_bin_def = [{"name":"only W2", "condition": combined_wise2},
-                {"name":"only WISE", "condition": combined_wise},
-                {"name":"-inf to {}".format(colour_limits[0]), 
-                "condition": (combined["colour"] < colour_limits[0])}]
+#######################
+## Original code for non masked catalogues
 
-# Get the colour bins
-for i in range(len(colour_limits)-1):
-    name = "{} to {}".format(colour_limits[i], colour_limits[i+1])
-    condition = ((combined["colour"] >= colour_limits[i]) & 
-                (combined["colour"] < colour_limits[i+1]))
-    colour_bin_def.append({"name":name, "condition":condition})
+# ## Get the colours for the combined catalogue
+# print("Get auxiliary columns")
+# combined["colour"] = combined[VIS_col] - combined[NIR_col1]
+# 
+# combined_legacy = (
+#     ~np.isnan(combined[VIS_col]) & 
+#     ~np.isnan(combined[NIR_col1]) & 
+#     ~np.isnan(combined[NIR_col2])
+# )
+# combined_wise =(
+#     np.isnan(combined[VIS_col]) & 
+#     ~np.isnan(combined[NIR_col1])
+# )
+# combined_wise2 =(
+#     np.isnan(combined[VIS_col]) & 
+#     np.isnan(combined[NIR_col1]) &
+#     ~np.isnan(combined[NIR_col2])
+# )
+##########################
 
-# Add the "more than higher colour" bin
-colour_bin_def.append({"name":"{} to inf".format(colour_limits[-1]), 
-                    "condition": (combined["colour"] >= colour_limits[-1])})
+## New code for masked catalogues ##
 
-# Apply the categories
-combined["category"] = -1 # changed from np.nan to cover for unmatched entries and will trigger a 0 probability
-for i in range(len(colour_bin_def)):
-    combined["category"][colour_bin_def[i]["condition"]] = i
+def is_valid(col):              # Define a function to determine if there are masked values and find the valid ones.
+    arr = np.asarray(col)
+    ok = np.isfinite(arr)
+    if hasattr(col, "mask"):
+        ok &= ~np.asarray(col.mask)
+    return ok
+
+vis_ok = is_valid(combined[VIS_col])
+nir1_ok = is_valid(combined[NIR_col1])
+nir2_ok = is_valid(combined[NIR_col2])
+
+combined_legacy = vis_ok & nir1_ok & nir2_ok
+combined_wise = (~vis_ok) & nir1_ok
+combined_wise2 = (~vis_ok) & (~nir1_ok) & nir2_ok
+
+
+##########################
+## Original code for non masked catalogues ##
+
+# # Start with the W2-only, W1-only, and "less than lower colour" bins
+# colour_bin_def = [{"name":"only W2", "condition": combined_wise2},
+#                 {"name":"only WISE", "condition": combined_wise},
+#                 {"name":"-inf to {}".format(colour_limits[0]), 
+#                 "condition": (combined["colour"] < colour_limits[0])}]
+
+# # Get the colour bins
+# for i in range(len(colour_limits)-1):
+#     name = "{} to {}".format(colour_limits[i], colour_limits[i+1])
+#     condition = ((combined["colour"] >= colour_limits[i]) & 
+#                 (combined["colour"] < colour_limits[i+1]))
+#     colour_bin_def.append({"name":name, "condition":condition})
+
+# # Add the "more than higher colour" bin
+# colour_bin_def.append({"name":"{} to inf".format(colour_limits[-1]), 
+#                     "condition": (combined["colour"] >= colour_limits[-1])})
+
+# # Apply the categories
+# combined["category"] = -1 # changed from np.nan to cover for unmatched entries and will trigger a 0 probability
+# for i in range(len(colour_bin_def)):
+#     combined["category"][colour_bin_def[i]["condition"]] = i
+##########################
+
+## New code for masked catalogues ##
+
+colour = combined[VIS_col] - combined[NIR_col1]
+colour_arr = np.asarray(colour)
+colour_ok = np.isfinite(colour_arr)
+if hasattr(colour, "mask"):
+    colour_ok &= ~np.asarray(colour.mask)
+
+# Define colour bins
+colour_bin_def = [
+    {"name": "only W2",   "condition": combined_wise2},
+    {"name": "only WISE", "condition": combined_wise},
+    {"name": f"-inf to {colour_limits[0]}",
+     "condition": colour_ok & (colour_arr < colour_limits[0])}
+]
+
+for i in range(len(colour_limits) - 1):
+    lo, hi = colour_limits[i], colour_limits[i + 1]
+    colour_bin_def.append({
+        "name": f"{lo} to {hi}",
+        "condition": colour_ok & (colour_arr >= lo) & (colour_arr < hi)
+    })
+
+colour_bin_def.append({
+    "name": f"{colour_limits[-1]} to inf",
+    "condition": colour_ok & (colour_arr >= colour_limits[-1])
+})
+
+# Assign categories
+cat = np.full(len(combined), np.nan)
+for i, b in enumerate(colour_bin_def):
+    cat[b["condition"]] = i
+
+combined["category"] = cat
 
 
 ## Define number of CPUs
@@ -310,51 +373,138 @@ idx_lofar, idx_i, d2d, d3d = search_around_sky(
     coords_lofar, coords_combined, radius*u.arcsec
     )
 idx_lofar_unique = np.unique(idx_lofar)
+
+#########################
+## Original code for non masked catalogues ##
+
+# def apply_ml(i, likelihood_ratio_function):
+#     idx_0 = idx_i[idx_lofar == i]
+#     d2d_0 = d2d[idx_lofar == i]
+    
+#     category = combined["category"][idx_0].astype(int)
+
+#     # Filter out of the invalid categories (== -1) added earlier
+#     valid = category >= 0
+#     if not np.any(valid):
+#         return None  # Nothing valid to process
+
+#     # Apply the filter to everything that depends on idx_0
+#     idx_0 = idx_0[valid]
+#     d2d_0 = d2d_0[valid]
+#     category = category[valid]
+
+#     mag = combined[VIS_col][idx_0]
+#     mag[category == 0] = combined[NIR_col2][idx_0][category == 0]
+#     mag[category == 1] = combined[NIR_col1][idx_0][category == 1]
+    
+#     lofar_ra = lofar[i][RA_rad]
+#     lofar_dec = lofar[i][DEC_rad]
+#     lofar_pa = lofar[i][PA_rad]
+#     lofar_maj_err = lofar[i][E_Maj_rad]
+#     lofar_min_err = lofar[i][E_Min_rad]
+#     c_ra = combined[RA_opt][idx_0]
+#     c_dec = combined[DEC_opt][idx_0]
+#     c_ra_err = np.ones_like(c_ra)*0.6/3600.
+#     c_dec_err = np.ones_like(c_ra)*0.6/3600.
+    
+#     sigma_0_0, det_sigma = get_sigma_all(lofar_maj_err, lofar_min_err, lofar_pa, 
+#                     lofar_ra, lofar_dec, 
+#                     c_ra, c_dec, c_ra_err, c_dec_err)
+
+#     lr_0 = likelihood_ratio_function(mag, d2d_0.arcsec, sigma_0_0, det_sigma, category)
+    
+#     chosen_index = np.argmax(lr_0)
+#     result = [combined_aux_index[idx_0[chosen_index]], # Index
+#             (d2d_0.arcsec)[chosen_index],                        # distance
+#             lr_0[chosen_index]]                                  # LR
+#     return result
+
+#############################
+
+## New code for masked catalogues ##
+
 def apply_ml(i, likelihood_ratio_function):
     idx_0 = idx_i[idx_lofar == i]
     d2d_0 = d2d[idx_lofar == i]
-    
-    category = combined["category"][idx_0].astype(int)
 
-    # Filter out of the invalid categories (== -1) added earlier
-    valid = category >= 0
-    if not np.any(valid):
-        return None  # Nothing valid to process
+    # --- 1) Category: handle NaNs safely ---
+    cat_raw = np.asarray(combined["category"][idx_0])
+    cat_ok = np.isfinite(cat_raw)
+    if not np.any(cat_ok):
+        return [np.nan, np.nan, 0.0]
 
-    # Apply the filter to everything that depends on idx_0
-    idx_0 = idx_0[valid]
-    d2d_0 = d2d_0[valid]
-    category = category[valid]
+    idx_0 = idx_0[cat_ok]
+    d2d_0 = d2d_0[cat_ok]
+    category = cat_raw[cat_ok].astype(int)
 
-    mag = combined[VIS_col][idx_0]
-    mag[category == 0] = combined[NIR_col2][idx_0][category == 0]
-    mag[category == 1] = combined[NIR_col1][idx_0][category == 1]
-    
+    # --- 2) Build magnitude array by category ---
+    mag_vis = combined[VIS_col][idx_0]
+    mag = np.asarray(mag_vis)  # detach from masked semantics
+
+    m_w2 = combined[NIR_col2][idx_0]
+    m_w1 = combined[NIR_col1][idx_0]
+    m_w2_arr = np.asarray(m_w2)
+    m_w1_arr = np.asarray(m_w1)
+
+    mag[category == 0] = m_w2_arr[category == 0]
+    mag[category == 1] = m_w1_arr[category == 1]
+
+    # --- 3) Magnitude validity mask (finite + not masked in the used band) ---
+    mag_ok = np.isfinite(mag)
+
+    # enforce masks per band (only where used)
+    if hasattr(m_w2, "mask"):
+        mag_ok[category == 0] &= ~np.asarray(m_w2.mask)[category == 0]
+    if hasattr(m_w1, "mask"):
+        mag_ok[category == 1] &= ~np.asarray(m_w1.mask)[category == 1]
+    if hasattr(mag_vis, "mask"):
+        mag_ok[category >= 2] &= ~np.asarray(mag_vis.mask)[category >= 2]
+
+    if not np.any(mag_ok):
+        return [np.nan, np.nan, 0.0]
+
+    # Apply mag filter consistently
+    idx_0 = idx_0[mag_ok]
+    d2d_0 = d2d_0[mag_ok]
+    category = category[mag_ok]
+    mag = mag[mag_ok].astype(float)
+
+    # --- 4) Positional uncertainties / sigma ---
     lofar_ra = lofar[i][RA_rad]
     lofar_dec = lofar[i][DEC_rad]
     lofar_pa = lofar[i][PA_rad]
     lofar_maj_err = lofar[i][E_Maj_rad]
     lofar_min_err = lofar[i][E_Min_rad]
+
     c_ra = combined[RA_opt][idx_0]
     c_dec = combined[DEC_opt][idx_0]
-    c_ra_err = np.ones_like(c_ra)*0.6/3600.
-    c_dec_err = np.ones_like(c_ra)*0.6/3600.
-    
-    sigma_0_0, det_sigma = get_sigma_all(lofar_maj_err, lofar_min_err, lofar_pa, 
-                    lofar_ra, lofar_dec, 
-                    c_ra, c_dec, c_ra_err, c_dec_err)
+    c_ra_err = np.ones_like(c_ra) * 0.6/3600.
+    c_dec_err = np.ones_like(c_ra) * 0.6/3600.
 
+    sigma_0_0, det_sigma = get_sigma_all(
+        lofar_maj_err, lofar_min_err, lofar_pa,
+        lofar_ra, lofar_dec,
+        c_ra, c_dec, c_ra_err, c_dec_err
+    )
+
+    # --- 5) LR + choose best candidate ---
     lr_0 = likelihood_ratio_function(mag, d2d_0.arcsec, sigma_0_0, det_sigma, category)
-    
     chosen_index = np.argmax(lr_0)
-    result = [combined_aux_index[idx_0[chosen_index]], # Index
-            (d2d_0.arcsec)[chosen_index],                        # distance
-            lr_0[chosen_index]]                                  # LR
+
+    result =  [
+        float(combined_aux_index[idx_0[chosen_index]]),     # global index in combined
+        float((d2d_0.arcsec)[chosen_index]),
+        float(lr_0[chosen_index]),
+    ]
     return result
+
 likelihood_ratio = MultiMLEstimator(Q_0_colour, n_m, q_m, centers)
+
 def ml(i):
     return apply_ml(i, likelihood_ratio)
+
 print("Run LR")
+
 res = parallel_process(idx_lofar_unique, ml, n_jobs=1)
 
 # Prepare output arrays

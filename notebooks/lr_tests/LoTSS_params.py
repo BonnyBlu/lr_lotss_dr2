@@ -301,10 +301,7 @@ combined_nomargin = field.filter_catalogue(combined_all,
 
 # Compute some additional data that was not available in the catalogues like the colour or an auxiliary array with an index.
 
-combined["colour"] = combined[VIS_col] - combined[NIR_col1]
-
 combined_aux_index = np.arange(len(combined))
-
 
 # Sky coordinates
 
@@ -318,27 +315,49 @@ coords_lofar = SkyCoord(lofar[RA_rad],
                        unit=(u.deg, u.deg), 
                        frame='icrs')
 
-
 # Class of sources in the combined catalogue
 
 # The sources are grouped depending on the available photometric data.
 
-combined_legacy = (
-    ~np.isnan(combined[VIS_col]) & 
-    ~np.isnan(combined[NIR_col1]) & 
-    ~np.isnan(combined[NIR_col2])
-)
+###############################
+## Orignial code for non masked catalogues ##
 
-combined_wise =(
-    np.isnan(combined[VIS_col]) & 
-    ~np.isnan(combined[NIR_col1])
-)
+# combined["colour"] = combined[VIS_col] - combined[NIR_col1]
 
-combined_wise2 =(
-    np.isnan(combined[VIS_col]) & 
-    np.isnan(combined[NIR_col1]) &
-    ~np.isnan(combined[NIR_col2])
-)
+# combined_legacy = (
+#     ~np.isnan(combined[VIS_col]) & 
+#     ~np.isnan(combined[NIR_col1]) & 
+#     ~np.isnan(combined[NIR_col2])
+# )
+
+# combined_wise =(
+#     np.isnan(combined[VIS_col]) & 
+#     ~np.isnan(combined[NIR_col1])
+# )
+
+# combined_wise2 =(
+#     np.isnan(combined[VIS_col]) & 
+#     np.isnan(combined[NIR_col1]) &
+#     ~np.isnan(combined[NIR_col2])
+# )
+###############################
+
+## New code for masked catalogues ##
+
+def is_valid(col):              # Define a function to determine if there are masked values and find the valid ones.
+    arr = np.asarray(col)
+    ok = np.isfinite(arr)
+    if hasattr(col, "mask"):
+        ok &= ~np.asarray(col.mask)
+    return ok
+
+vis_ok = is_valid(combined[VIS_col])
+nir1_ok = is_valid(combined[NIR_col1])
+nir2_ok = is_valid(combined[NIR_col2])
+
+combined_legacy = vis_ok & nir1_ok & nir2_ok
+combined_wise = (~vis_ok) & nir1_ok
+combined_wise2 = (~vis_ok) & (~nir1_ok) & nir2_ok
 
 print("Total rad - ", len(lofar_full))
 print("Total opt - ", len(combined))
@@ -346,6 +365,11 @@ print("R and W1  - ", np.sum(combined_legacy))
 print("Only WISE - ", np.sum(combined_wise))
 print("Only W2   - ", np.sum(combined_wise2))
 
+colour = combined[VIS_col] - combined[NIR_col1]
+colour_arr = np.asarray(colour)
+colour_ok = np.isfinite(colour_arr)
+if hasattr(colour, "mask"):
+    colour_ok &= ~np.asarray(colour.mask)
 
 ### Colour categories ###
 
@@ -370,41 +394,81 @@ print("Only W2   - ", np.sum(combined_wise2))
 
 colour_limits = colour_limits_post
 
-# Start with the W2-only, W1-only, and "less than lower colour" bins
-colour_bin_def = [{"name":"only W2", "condition": combined_wise2},
-                  {"name":"only WISE", "condition": combined_wise},
-                  {"name":"-inf to {}".format(colour_limits[0]), 
-                   "condition": (combined["colour"] < colour_limits[0])}]
+######################
+## Old code for non-masked catalogues
 
-# Get the colour bins
-for i in range(len(colour_limits)-1):
-    name = "{} to {}".format(colour_limits[i], colour_limits[i+1])
-    condition = ((combined["colour"] >= colour_limits[i]) & 
-                 (combined["colour"] < colour_limits[i+1]))
-    colour_bin_def.append({"name":name, "condition":condition})
+# # Start with the W2-only, W1-only, and "less than lower colour" bins
+# colour_bin_def = [{"name":"only W2", "condition": combined_wise2},
+#                   {"name":"only WISE", "condition": combined_wise},
+#                   {"name":"-inf to {}".format(colour_limits[0]), 
+#                    "condition": (combined["colour"] < colour_limits[0])}]
 
-# Add the "more than higher colour" bin
-colour_bin_def.append({"name":"{} to inf".format(colour_limits[-1]), 
-                       "condition": (combined["colour"] >= colour_limits[-1])})
+# # Get the colour bins
+# for i in range(len(colour_limits)-1):
+#     name = "{} to {}".format(colour_limits[i], colour_limits[i+1])
+#     condition = ((combined["colour"] >= colour_limits[i]) & 
+#                  (combined["colour"] < colour_limits[i+1]))
+#     colour_bin_def.append({"name":name, "condition":condition})
+
+# # Add the "more than higher colour" bin
+# colour_bin_def.append({"name":"{} to inf".format(colour_limits[-1]), 
+#                        "condition": (combined["colour"] >= colour_limits[-1])})
+# A colour category variable (numerical index from 0 to 11) is assigned to each row
+
+# combined["category"] = np.nan
+# for i in range(len(colour_bin_def)):
+#     combined["category"][colour_bin_def[i]["condition"]] = i
+
+# We check that there are no rows withot a category assigned
+
+# np.sum(np.isnan(combined["category"]))
+
+# # We get the number of sources of the combined catalogue in each colour category. It will be used at a later stage to compute the $Q_0$ values
+
+# numbers_combined_bins = np.array([np.sum(a["condition"]) for a in colour_bin_def])
+
+#####################
+# New code for masked catalogues
+
+# Define colour bins
+colour_bin_def = [
+    {"name": "only W2",   "condition": combined_wise2},
+    {"name": "only WISE", "condition": combined_wise},
+    {"name": f"-inf to {colour_limits[0]}",
+     "condition": colour_ok & (colour_arr < colour_limits[0])}
+]
+
+for i in range(len(colour_limits) - 1):
+    lo, hi = colour_limits[i], colour_limits[i + 1]
+    colour_bin_def.append({
+        "name": f"{lo} to {hi}",
+        "condition": colour_ok & (colour_arr >= lo) & (colour_arr < hi)
+    })
+
+colour_bin_def.append({
+    "name": f"{colour_limits[-1]} to inf",
+    "condition": colour_ok & (colour_arr >= colour_limits[-1])
+})
+
+# Assign categories
+cat = np.full(len(combined), np.nan)
+for i, b in enumerate(colour_bin_def):
+    cat[b["condition"]] = i
+
+combined["category"] = cat
 
 # The dictionary ''colour_bin_def'' contains the indices of the different colour categories.
 
 colour_bin_def
 
-# A colour category variable (numerical index from 0 to 11) is assigned to each row
+# Check no row is in more than one bin
+conds = np.vstack([b["condition"] for b in colour_bin_def])
+assert np.all(conds.sum(axis=0) <= 1)
 
-combined["category"] = np.nan
-for i in range(len(colour_bin_def)):
-    combined["category"][colour_bin_def[i]["condition"]] = i
-
-# We check that there are no rows withot a category assigned
-
-np.sum(np.isnan(combined["category"]))
-
-# We get the number of sources of the combined catalogue in each colour category. It will be used at a later stage to compute the $Q_0$ values
+# Check categories assigned consistently
+print("Unassigned rows:", np.sum(np.isnan(combined["category"])))
 
 numbers_combined_bins = np.array([np.sum(a["condition"]) for a in colour_bin_def])
-
 numbers_combined_bins
 
 np.sum(numbers_combined_bins)
@@ -575,7 +639,22 @@ center_r = get_center(bin_list_r)
 if debug == True:
     print('Calculating n_m_r kde')
 
-n_m_r = get_n_m_kde(catalogue_r[VIS_col], center_r, field.area, bandwidth=bandwidth_r)
+## New code added for masked catalogues ##
+
+coords_big_r = coords_combined[combined_legacy]
+
+m_r = catalogue_r[VIS_col]
+m_r_arr = np.asarray(m_r)
+ok_r = np.isfinite(m_r_arr)
+if hasattr(m_r, "mask"):
+    ok_r &= ~np.asarray(m_r.mask)
+
+mag_r = m_r_arr[ok_r].astype(float)
+coords_big_r = coords_big_r[ok_r]
+
+n_m_r = get_n_m_kde(mag_r, center_r, field.area, bandwidth=bandwidth_r)
+
+#n_m_r = get_n_m_kde(catalogue_r[VIS_col], center_r, field.area, bandwidth=bandwidth_r)         # Non masked version
 
 n_m_r_cs = np.cumsum(n_m_r)
 
@@ -586,13 +665,15 @@ n_m_r_cs = np.cumsum(n_m_r)
 if debug == True:
     print('Calculating q_m_r kde')
 
-q_m_r = estimate_q_m_kde(catalogue_r[VIS_col], 
-                      center_r, 
-                      n_m_r, 
-                      coords_lofar, 
-                      coords_combined[combined_legacy], 
-                      radius=5, 
-                      bandwidth=bandwidth_r)
+# q_m_r = estimate_q_m_kde(catalogue_r[VIS_col],                                                # Non masked version
+#                       center_r, 
+#                       n_m_r, 
+#                       coords_lofar, 
+#                       coords_combined[combined_legacy], 
+#                       radius=5, 
+#                       bandwidth=bandwidth_r)
+
+q_m_r = estimate_q_m_kde(mag_r, center_r, n_m_r, coords_lofar, coords_big_r, radius=5, bandwidth=bandwidth_r)
 
 q_m_r_cs = np.cumsum(q_m_r)
 
@@ -618,7 +699,22 @@ center_w1 = get_center(bin_list_w1)
 if debug == True:
     print('Calculating n_m_w1 kde')
 
-n_m_w1 = get_n_m_kde(catalogue_w1[NIR_col1], center_w1, field.area, bandwidth=bandwidth_w1)
+## New code added for masked catalogues
+
+coords_big_w1 = coords_combined[combined_wise]
+
+m_w1 = catalogue_w1[NIR_col1]
+m_w1_arr = np.asarray(m_w1)
+ok_w1 = np.isfinite(m_w1_arr)
+if hasattr(m_w1, "mask"):
+    ok_w1 &= ~np.asarray(m_w1.mask)
+
+mag_w1 = m_w1_arr[ok_w1].astype(float)
+coords_big_w1 = coords_big_w1[ok_w1]
+
+n_m_w1 = get_n_m_kde(mag_w1, center_w1, field.area, bandwidth=bandwidth_w1)
+
+#n_m_w1 = get_n_m_kde(catalogue_w1[NIR_col1], center_w1, field.area, bandwidth=bandwidth_w1)            # non masked version
 
 # Commented out because plots are not needed right now #
 #plt.rcParams["figure.figsize"] = (5,5)
@@ -627,12 +723,13 @@ n_m_w1 = get_n_m_kde(catalogue_w1[NIR_col1], center_w1, field.area, bandwidth=ba
 if debug == True:
     print('Calculating q_m_w1 kde')
     try:
-        q_m_w1 = estimate_q_m_kde(catalogue_w1[NIR_col1], 
-                              center_w1, 
-                              n_m_w1, coords_lofar, 
-                              coords_combined[combined_wise], 
-                              radius=5, 
-                              bandwidth=bandwidth_w1)
+        # q_m_w1 = estimate_q_m_kde(catalogue_w1[NIR_col1],                                             # non masked version
+        #                       center_w1, 
+        #                       n_m_w1, coords_lofar, 
+        #                       coords_combined[combined_wise], 
+        #                       radius=5, 
+        #                       bandwidth=bandwidth_w1)
+        q_m_w1 = estimate_q_m_kde(mag_w1, center_w1, n_m_w1, coords_lofar, coords_big_w1, radius=5, bandwidth=bandwidth_w1)
     except ValueError:
         if log_out == True:
             log_outputs(REGION, "ValueError", details = "Error occurred in calculating q_m_w1 - zero value in array")
@@ -657,7 +754,22 @@ center_w2 = get_center(bin_list_w2)
 if debug == True:
     print('Calculating n_m_w2 kde')
 
-n_m_w2 = get_n_m_kde(catalogue_w2[NIR_col2], center_w2, field.area, bandwidth=bandwidth_w2)
+## New code added for masked catalogues
+
+coords_big_w2 = coords_combined[combined_wise2]
+
+m_w2 = catalogue_w2[NIR_col2]
+m_w2_arr = np.asarray(m_w2)
+ok_w2 = np.isfinite(m_w2_arr)
+if hasattr(m_w2, "mask"):
+    ok_w2 &= ~np.asarray(m_w2.mask)
+
+mag_w2 = m_w2_arr[ok_w2].astype(float)
+coords_big_w2 = coords_big_w2[ok_w2]
+
+n_m_w2 = get_n_m_kde(mag_w2, center_w2, field.area, bandwidth=bandwidth_w2)
+
+#n_m_w2 = get_n_m_kde(catalogue_w2[NIR_col2], center_w2, field.area, bandwidth=bandwidth_w2)                # non masked version
 
 # Commented out because plots are not needed right now #
 #plt.rcParams["figure.figsize"] = (5,5)
@@ -666,12 +778,13 @@ n_m_w2 = get_n_m_kde(catalogue_w2[NIR_col2], center_w2, field.area, bandwidth=ba
 if debug == True:
     print('Calculating q_m_w2 kde')
     try:
-        q_m_w2 = estimate_q_m_kde(catalogue_w2[NIR_col2], 
-                              center_w2, 
-                              n_m_w2, coords_lofar, 
-                              coords_combined[combined_wise2], 
-                              radius=5, 
-                              bandwidth=bandwidth_w2)
+        # q_m_w2 = estimate_q_m_kde(catalogue_w2[NIR_col2],                                                 # non masked version
+        #                       center_w2, 
+        #                       n_m_w2, coords_lofar, 
+        #                       coords_combined[combined_wise2], 
+        #                       radius=5, 
+        #                       bandwidth=bandwidth_w2)
+        q_m_w2 = estimate_q_m_kde(mag_w2, center_w2, n_m_w2, coords_lofar, coords_big_w2, radius=5, bandwidth=bandwidth_w2)
     except ValueError:
         if log_out == True:
             log_outputs(REGION, "ValueError", details = "Error occurred in calculating q_m_w2 - zero value in array")
@@ -734,34 +847,90 @@ if debug == True:
 
     print('define function')
 
+###########################
+## Old code for non masked catalogues ##
+
+# def ml(i):
+#     #print('index of ml', i)
+#     idx_0 = idx_i[idx_lofar == i]
+#     d2d_0 = d2d[idx_lofar == i]
+#     mag = catalogue_r[VIS_col][idx_0]
+    
+#     lofar_ra = lofar[i][RA_rad]
+#     lofar_dec = lofar[i][DEC_rad]
+#     lofar_pa = lofar[i][PA_rad]
+#     lofar_maj_err = lofar[i][E_Maj_rad]
+#     lofar_min_err = lofar[i][E_Min_rad]
+#     c_ra = catalogue_r[RA_opt][idx_0]
+#     c_dec = catalogue_r[DEC_opt][idx_0]
+#     c_ra_err = np.ones_like(c_ra)*0.6/3600.
+#     c_dec_err = np.ones_like(c_ra)*0.6/3600.
+
+#     #print('getting sigma of ml function', i)
+#     sigma_0_0, det_sigma = get_sigma_all(lofar_maj_err, lofar_min_err, lofar_pa, 
+#                       lofar_ra, lofar_dec, 
+#                       c_ra, c_dec, c_ra_err, c_dec_err)
+
+#     #print('getting LR', i)
+#     lr_0 = likelihood_ratio_r(mag, d2d_0.arcsec, sigma_0_0, det_sigma)
+#     chosen_index = np.argmax(lr_0)
+#     result = [combined_aux_index[combined_legacy][idx_0[chosen_index]], # Index
+#               (d2d_0.arcsec)[chosen_index],                        # distance
+#               lr_0[chosen_index]]                                  # LR
+#     #print('result', i)
+#     return result
+##############################
+
+## New fuction for masked catalogues ##
+
 def ml(i):
-    #print('index of ml', i)
     idx_0 = idx_i[idx_lofar == i]
     d2d_0 = d2d[idx_lofar == i]
+
+    # Magnitudes (may be MaskedArray/MaskedColumn) deals with filtering out the masked values
     mag = catalogue_r[VIS_col][idx_0]
-    
+    mag_arr = np.asarray(mag)
+
+    mag_ok = np.isfinite(mag_arr)
+    if hasattr(mag, "mask"):
+        mag_ok &= ~np.asarray(mag.mask)
+
+    # If nothing usable, return "no match"
+    if not np.any(mag_ok):
+        return [np.nan, np.nan, 0.0]
+
+    # Keep everything aligned
+    idx_0 = idx_0[mag_ok]
+    d2d_0 = d2d_0[mag_ok]
+    mag_arr = mag_arr[mag_ok].astype(float)
+
     lofar_ra = lofar[i][RA_rad]
     lofar_dec = lofar[i][DEC_rad]
     lofar_pa = lofar[i][PA_rad]
     lofar_maj_err = lofar[i][E_Maj_rad]
     lofar_min_err = lofar[i][E_Min_rad]
+
     c_ra = catalogue_r[RA_opt][idx_0]
     c_dec = catalogue_r[DEC_opt][idx_0]
-    c_ra_err = np.ones_like(c_ra)*0.6/3600.
-    c_dec_err = np.ones_like(c_ra)*0.6/3600.
+    c_ra_err = np.ones_like(c_ra) * 0.6/3600.
+    c_dec_err = np.ones_like(c_ra) * 0.6/3600.
 
-    #print('getting sigma of ml function', i)
-    sigma_0_0, det_sigma = get_sigma_all(lofar_maj_err, lofar_min_err, lofar_pa, 
-                      lofar_ra, lofar_dec, 
-                      c_ra, c_dec, c_ra_err, c_dec_err)
+    sigma_0_0, det_sigma = get_sigma_all(
+        lofar_maj_err, lofar_min_err, lofar_pa,
+        lofar_ra, lofar_dec,
+        c_ra, c_dec, c_ra_err, c_dec_err
+    )
 
-    #print('getting LR', i)
-    lr_0 = likelihood_ratio_r(mag, d2d_0.arcsec, sigma_0_0, det_sigma)
+    lr_0 = likelihood_ratio_r(mag_arr, d2d_0.arcsec, sigma_0_0, det_sigma)
+
     chosen_index = np.argmax(lr_0)
-    result = [combined_aux_index[combined_legacy][idx_0[chosen_index]], # Index
-              (d2d_0.arcsec)[chosen_index],                        # distance
-              lr_0[chosen_index]]                                  # LR
-    #print('result', i)
+
+    # IMPORTANT: idx_0 is now filtered, so this index is still correct
+    result = [
+        combined_aux_index[combined_legacy][idx_0[chosen_index]],
+        (d2d_0.arcsec)[chosen_index],
+        lr_0[chosen_index],
+    ]
     return result
 
 
@@ -902,30 +1071,84 @@ lofar["lr_w1"] = np.nan                   # Likelihood ratio
 lofar["lr_dist_w1"] = np.nan              # Distance to the selected source
 lofar["lr_index_w1"] = np.nan             # Index of the PanSTARRS source in combined
 
+#######################
+## Old code for non masked catalogues
+
+# def ml_w1(i):
+#     idx_0 = idx_i_w1[idx_lofar_w1 == i]
+#     d2d_0 = d2d_w1[idx_lofar_w1 == i]
+#     mag = catalogue_w1[NIR_col1][idx_0]
+    
+#     lofar_ra = lofar[subsample_w1][i][RA_rad]
+#     lofar_dec = lofar[subsample_w1][i][DEC_rad]
+#     lofar_pa = lofar[subsample_w1][i][PA_rad]
+#     lofar_maj_err = lofar[subsample_w1][i][E_Maj_rad]
+#     lofar_min_err = lofar[subsample_w1][i][E_Min_rad]
+#     c_ra = catalogue_w1[RA_opt][idx_0]
+#     c_dec = catalogue_w1[DEC_opt][idx_0]
+#     c_ra_err = np.ones_like(c_ra)*0.6/3600.
+#     c_dec_err = np.ones_like(c_ra)*0.6/3600.
+    
+#     sigma_0_0, det_sigma = get_sigma_all(lofar_maj_err, lofar_min_err, lofar_pa, 
+#                       lofar_ra, lofar_dec, 
+#                       c_ra, c_dec, c_ra_err, c_dec_err)
+    
+#     lr_0 = likelihood_ratio_w1(mag, d2d_0.arcsec, sigma_0_0, det_sigma)
+#     chosen_index = np.argmax(lr_0)
+#     result = [combined_aux_index[combined_wise][idx_0[chosen_index]], # Index
+#               (d2d_0.arcsec)[chosen_index],                        # distance
+#               lr_0[chosen_index]]                                  # LR
+#     return result
+########################
+
+## New code for masked catalogues
+
 def ml_w1(i):
     idx_0 = idx_i_w1[idx_lofar_w1 == i]
     d2d_0 = d2d_w1[idx_lofar_w1 == i]
+
+    # Magnitudes (may be masked)
     mag = catalogue_w1[NIR_col1][idx_0]
-    
+    mag_arr = np.asarray(mag)
+
+    mag_ok = np.isfinite(mag_arr)
+    if hasattr(mag, "mask"):
+        mag_ok &= ~np.asarray(mag.mask)
+
+    # No usable candidates
+    if not np.any(mag_ok):
+        return [np.nan, np.nan, 0.0]
+
+    # Keep everything aligned
+    idx_0 = idx_0[mag_ok]
+    d2d_0 = d2d_0[mag_ok]
+    mag_arr = mag_arr[mag_ok].astype(float)
+
     lofar_ra = lofar[subsample_w1][i][RA_rad]
     lofar_dec = lofar[subsample_w1][i][DEC_rad]
     lofar_pa = lofar[subsample_w1][i][PA_rad]
     lofar_maj_err = lofar[subsample_w1][i][E_Maj_rad]
     lofar_min_err = lofar[subsample_w1][i][E_Min_rad]
+
     c_ra = catalogue_w1[RA_opt][idx_0]
     c_dec = catalogue_w1[DEC_opt][idx_0]
-    c_ra_err = np.ones_like(c_ra)*0.6/3600.
-    c_dec_err = np.ones_like(c_ra)*0.6/3600.
-    
-    sigma_0_0, det_sigma = get_sigma_all(lofar_maj_err, lofar_min_err, lofar_pa, 
-                      lofar_ra, lofar_dec, 
-                      c_ra, c_dec, c_ra_err, c_dec_err)
-    
-    lr_0 = likelihood_ratio_w1(mag, d2d_0.arcsec, sigma_0_0, det_sigma)
+    c_ra_err = np.ones_like(c_ra) * 0.6/3600.
+    c_dec_err = np.ones_like(c_ra) * 0.6/3600.
+
+    sigma_0_0, det_sigma = get_sigma_all(
+        lofar_maj_err, lofar_min_err, lofar_pa,
+        lofar_ra, lofar_dec,
+        c_ra, c_dec, c_ra_err, c_dec_err
+    )
+
+    lr_0 = likelihood_ratio_w1(mag_arr, d2d_0.arcsec, sigma_0_0, det_sigma)
     chosen_index = np.argmax(lr_0)
-    result = [combined_aux_index[combined_wise][idx_0[chosen_index]], # Index
-              (d2d_0.arcsec)[chosen_index],                        # distance
-              lr_0[chosen_index]]                                  # LR
+
+    result = [
+        combined_aux_index[combined_wise][idx_0[chosen_index]],  # Index
+        (d2d_0.arcsec)[chosen_index],                            # distance
+        lr_0[chosen_index],                                      # LR
+    ]
     return result
 
 if debug == True:
@@ -1064,31 +1287,84 @@ lofar["lr_w2"] = np.nan                   # Likelihood ratio
 lofar["lr_dist_w2"] = np.nan              # Distance to the selected source
 lofar["lr_index_w2"] = np.nan             # Index of the PanSTARRS source in combined
 
+###################
+## Old code for non masked catalogues
+
+# def ml_w2(i):
+#     idx_0 = idx_i_w2[idx_lofar_w2 == i]
+#     d2d_0 = d2d_w2[idx_lofar_w2 == i]
+#     mag = catalogue_w2[NIR_col2][idx_0]
+    
+#     lofar_ra = lofar[subsample_w2][i][RA_rad]
+#     lofar_dec = lofar[subsample_w2][i][DEC_rad]
+#     lofar_pa = lofar[subsample_w2][i][PA_rad]
+#     lofar_maj_err = lofar[subsample_w2][i][E_Maj_rad]
+#     lofar_min_err = lofar[subsample_w2][i][E_Min_rad]
+#     c_ra = catalogue_w2[RA_opt][idx_0]
+#     c_dec = catalogue_w2[DEC_opt][idx_0]
+#     c_ra_err = np.ones_like(c_ra)*0.6/3600.
+#     c_dec_err = np.ones_like(c_ra)*0.6/3600.
+    
+#     sigma_0_0, det_sigma = get_sigma_all(lofar_maj_err, lofar_min_err, lofar_pa, 
+#                       lofar_ra, lofar_dec, 
+#                       c_ra, c_dec, c_ra_err, c_dec_err)
+#     lr_0 = likelihood_ratio_w2(mag, d2d_0.arcsec, sigma_0_0, det_sigma)       
+#     chosen_index = np.argmax(lr_0)
+#     result = [combined_aux_index[combined_wise2][idx_0[chosen_index]], # Index
+#               (d2d_0.arcsec)[chosen_index],                        # distance
+#               lr_0[chosen_index]]                                  # LR
+#     return result
+#######################
+
+## New code for masked catalogues ##
+
 def ml_w2(i):
     idx_0 = idx_i_w2[idx_lofar_w2 == i]
     d2d_0 = d2d_w2[idx_lofar_w2 == i]
+
+    # Magnitudes (may be masked)
     mag = catalogue_w2[NIR_col2][idx_0]
-    
+    mag_arr = np.asarray(mag)
+
+    mag_ok = np.isfinite(mag_arr)
+    if hasattr(mag, "mask"):
+        mag_ok &= ~np.asarray(mag.mask)
+
+    # No usable candidates
+    if not np.any(mag_ok):
+        return [np.nan, np.nan, 0.0]
+
+    # Keep everything aligned
+    idx_0 = idx_0[mag_ok]
+    d2d_0 = d2d_0[mag_ok]
+    mag_arr = mag_arr[mag_ok].astype(float)
+
     lofar_ra = lofar[subsample_w2][i][RA_rad]
     lofar_dec = lofar[subsample_w2][i][DEC_rad]
     lofar_pa = lofar[subsample_w2][i][PA_rad]
     lofar_maj_err = lofar[subsample_w2][i][E_Maj_rad]
     lofar_min_err = lofar[subsample_w2][i][E_Min_rad]
+
     c_ra = catalogue_w2[RA_opt][idx_0]
     c_dec = catalogue_w2[DEC_opt][idx_0]
-    c_ra_err = np.ones_like(c_ra)*0.6/3600.
-    c_dec_err = np.ones_like(c_ra)*0.6/3600.
-    
-    sigma_0_0, det_sigma = get_sigma_all(lofar_maj_err, lofar_min_err, lofar_pa, 
-                      lofar_ra, lofar_dec, 
-                      c_ra, c_dec, c_ra_err, c_dec_err)
-    lr_0 = likelihood_ratio_w2(mag, d2d_0.arcsec, sigma_0_0, det_sigma)       
-    chosen_index = np.argmax(lr_0)
-    result = [combined_aux_index[combined_wise2][idx_0[chosen_index]], # Index
-              (d2d_0.arcsec)[chosen_index],                        # distance
-              lr_0[chosen_index]]                                  # LR
-    return result
+    c_ra_err = np.ones_like(c_ra) * 0.6/3600.
+    c_dec_err = np.ones_like(c_ra) * 0.6/3600.
 
+    sigma_0_0, det_sigma = get_sigma_all(
+        lofar_maj_err, lofar_min_err, lofar_pa,
+        lofar_ra, lofar_dec,
+        c_ra, c_dec, c_ra_err, c_dec_err
+    )
+
+    lr_0 = likelihood_ratio_w2(mag_arr, d2d_0.arcsec, sigma_0_0, det_sigma)
+    chosen_index = np.argmax(lr_0)
+
+    result = [
+        combined_aux_index[combined_wise2][idx_0[chosen_index]],  # Index
+        (d2d_0.arcsec)[chosen_index],                             # distance
+        lr_0[chosen_index],                                       # LR
+    ]
+    return result
 
 res_w2 = parallel_process(idx_lofar_unique_w2, ml_w2, n_jobs=1)
  
@@ -1291,17 +1567,45 @@ if debug == True:
 
 n_m = []
 
+#################
+## Old code for non masked catalogues ##
+
+# # W2 only sources
+# n_m.append(get_n_m_kde(combined[NIR_col2][combined["category"] == 0], 
+#                        centers[0], field.area, bandwidth=bandwidth_colour[0]))
+# # W1 only sources
+# n_m.append(get_n_m_kde(combined[NIR_col1][combined["category"] == 1], 
+#                        centers[1], field.area, bandwidth=bandwidth_colour[1]))
+
+# # Rest of the sources
+# for i in range(2, len(colour_bin_def)):
+#     n_m.append(get_n_m_kde(combined[VIS_col][combined["category"] == i], 
+#                            centers[i], field.area, bandwidth=bandwidth_colour[i]))
+
+#####################
+
+## New code for masked catalogues ##
+
+def clean_1d(x):                        # Define a function of find and clean out the masked entries
+    arr = np.asarray(x)
+    ok = np.isfinite(arr)
+    if hasattr(x, "mask"):
+        ok &= ~np.asarray(x.mask)
+    return arr[ok].astype(float)
+
+
 # W2 only sources
-n_m.append(get_n_m_kde(combined[NIR_col2][combined["category"] == 0], 
+n_m.append(get_n_m_kde(clean_1d(combined[NIR_col2][combined["category"] == 0]), 
                        centers[0], field.area, bandwidth=bandwidth_colour[0]))
 # W1 only sources
-n_m.append(get_n_m_kde(combined[NIR_col1][combined["category"] == 1], 
+n_m.append(get_n_m_kde(clean_1d(combined[NIR_col1][combined["category"] == 1]), 
                        centers[1], field.area, bandwidth=bandwidth_colour[1]))
 
 # Rest of the sources
 for i in range(2, len(colour_bin_def)):
-    n_m.append(get_n_m_kde(combined[VIS_col][combined["category"] == i], 
+    n_m.append(get_n_m_kde(clean_1d(combined[VIS_col][combined["category"] == i]), 
                            centers[i], field.area, bandwidth=bandwidth_colour[i]))
+
 
 # Commented out because plots are not needed right now #
 #plt.rcParams["figure.figsize"] = (15,15)
@@ -1441,7 +1745,8 @@ if save_intermediate:
 
 ### Prepare for ML ###
 
-selection = ~np.isnan(combined["category"]) # Avoid the two dreaded sources with no actual data
+#selection = ~np.isnan(combined["category"]) # Avoid the two dreaded sources with no actual data - for non masked catalogues
+selection = np.isfinite(np.asarray(combined["category"]))   # To make it mask safe
 catalogue = combined[selection]
 
 radius = 15
@@ -1449,36 +1754,113 @@ radius = 15
 if debug == True:
     print('defining the ml function')
 
+#######################
+## Old code for non masked catalogues ##
+
+# def apply_ml(i, likelihood_ratio_function):
+#     idx_0 = idx_i[idx_lofar == i]
+#     d2d_0 = d2d[idx_lofar == i]
+    
+#     category = catalogue["category"][idx_0].astype(int)
+#     mag = catalogue[VIS_col][idx_0]
+#     mag[category == 0] = catalogue[NIR_col2][idx_0][category == 0]
+#     mag[category == 1] = catalogue[NIR_col1][idx_0][category == 1]
+    
+#     lofar_ra = lofar[i][RA_rad]
+#     lofar_dec = lofar[i][DEC_rad]
+#     lofar_pa = lofar[i][PA_rad]
+#     lofar_maj_err = lofar[i][E_Maj_rad]
+#     lofar_min_err = lofar[i][E_Min_rad]
+#     c_ra = catalogue[RA_opt][idx_0]
+#     c_dec = catalogue[DEC_opt][idx_0]
+#     c_ra_err = np.ones_like(c_ra)*0.6/3600.
+#     c_dec_err = np.ones_like(c_ra)*0.6/3600.
+    
+#     sigma_0_0, det_sigma = get_sigma_all(lofar_maj_err, lofar_min_err, lofar_pa, 
+#                       lofar_ra, lofar_dec, 
+#                       c_ra, c_dec, c_ra_err, c_dec_err)
+
+#     lr_0 = likelihood_ratio_function(mag, d2d_0.arcsec, sigma_0_0, det_sigma, category)
+    
+#     chosen_index = np.argmax(lr_0)
+#     result = [combined_aux_index[selection][idx_0[chosen_index]], # Index
+#               (d2d_0.arcsec)[chosen_index],                        # distance
+#               lr_0[chosen_index]]                                  # LR
+#     return result
+########################
+
+## New code for masled catalogues ##
+
 def apply_ml(i, likelihood_ratio_function):
     idx_0 = idx_i[idx_lofar == i]
     d2d_0 = d2d[idx_lofar == i]
-    
+
     category = catalogue["category"][idx_0].astype(int)
+
+    # Build mag array by category filters out the masked values
     mag = catalogue[VIS_col][idx_0]
-    mag[category == 0] = catalogue[NIR_col2][idx_0][category == 0]
-    mag[category == 1] = catalogue[NIR_col1][idx_0][category == 1]
-    
+    mag = np.asarray(mag)  # detach from masked column semantics
+
+    # Substitute per category
+    m_w2 = catalogue[NIR_col2][idx_0]
+    m_w1 = catalogue[NIR_col1][idx_0]
+
+    # Convert those too
+    m_w2_arr = np.asarray(m_w2)
+    m_w1_arr = np.asarray(m_w1)
+
+    mag[category == 0] = m_w2_arr[category == 0]
+    mag[category == 1] = m_w1_arr[category == 1]
+
+    # ---- NEW: filter invalid magnitudes (and keep arrays aligned) ----
+    mag_ok = np.isfinite(mag)
+
+    # If any of the source columns were masked, also enforce their masks
+    # (only where that band is being used)
+    if hasattr(m_w2, "mask"):
+        mag_ok[category == 0] &= ~np.asarray(m_w2.mask)[category == 0]
+    if hasattr(m_w1, "mask"):
+        mag_ok[category == 1] &= ~np.asarray(m_w1.mask)[category == 1]
+    m_vis = catalogue[VIS_col][idx_0]
+    if hasattr(m_vis, "mask"):
+        mag_ok[category >= 2] &= ~np.asarray(m_vis.mask)[category >= 2]
+
+    if not np.any(mag_ok):
+        return [np.nan, np.nan, 0.0]
+
+    # Apply the mask consistently
+    idx_0 = idx_0[mag_ok]
+    d2d_0 = d2d_0[mag_ok]
+    category = category[mag_ok]
+    mag = mag[mag_ok].astype(float)
+
     lofar_ra = lofar[i][RA_rad]
     lofar_dec = lofar[i][DEC_rad]
     lofar_pa = lofar[i][PA_rad]
     lofar_maj_err = lofar[i][E_Maj_rad]
     lofar_min_err = lofar[i][E_Min_rad]
+
     c_ra = catalogue[RA_opt][idx_0]
     c_dec = catalogue[DEC_opt][idx_0]
-    c_ra_err = np.ones_like(c_ra)*0.6/3600.
-    c_dec_err = np.ones_like(c_ra)*0.6/3600.
-    
-    sigma_0_0, det_sigma = get_sigma_all(lofar_maj_err, lofar_min_err, lofar_pa, 
-                      lofar_ra, lofar_dec, 
-                      c_ra, c_dec, c_ra_err, c_dec_err)
+    c_ra_err = np.ones_like(c_ra) * 0.6/3600.
+    c_dec_err = np.ones_like(c_ra) * 0.6/3600.
+
+    sigma_0_0, det_sigma = get_sigma_all(
+        lofar_maj_err, lofar_min_err, lofar_pa,
+        lofar_ra, lofar_dec,
+        c_ra, c_dec, c_ra_err, c_dec_err
+    )
 
     lr_0 = likelihood_ratio_function(mag, d2d_0.arcsec, sigma_0_0, det_sigma, category)
-    
+
     chosen_index = np.argmax(lr_0)
-    result = [combined_aux_index[selection][idx_0[chosen_index]], # Index
-              (d2d_0.arcsec)[chosen_index],                        # distance
-              lr_0[chosen_index]]                                  # LR
+    result = [
+        combined_aux_index[selection][idx_0[chosen_index]],
+        (d2d_0.arcsec)[chosen_index],
+        lr_0[chosen_index],
+    ]
     return result
+
 
 ### Run the cross-match ###
 
@@ -1658,18 +2040,18 @@ for j in range(10):
     # q_m
     q_m = []
     # W2 only sources
-    q_m.append(get_q_m_kde(lofar[NIR_col2][lofar["category"] == 0], 
+    q_m.append(get_q_m_kde(clean_1d(lofar[NIR_col2][lofar["category"] == 0]),           # Note the clean_1d added for masked catalogues
                        centers[0], 
                        radius=radius,
                        bandwidth=bandwidth_colour[0]))
     # W1 only sources
-    q_m.append(get_q_m_kde(lofar[NIR_col1][lofar["category"] == 1], 
+    q_m.append(get_q_m_kde(clean_1d(lofar[NIR_col1][lofar["category"] == 1]),           # Note the clean_1d added for masked catalogues
                        centers[1], 
                        radius=radius,
                        bandwidth=bandwidth_colour[1]))
     # Rest of the sources
     for i in range(2, len(numbers_lofar_combined_bins)):
-        q_m.append(get_q_m_kde(lofar[VIS_col][lofar["category"] == i], 
+        q_m.append(get_q_m_kde(clean_1d(lofar[VIS_col][lofar["category"] == i]),        # Note the clean_1d added for masked catalogues
                        centers[i], 
                        radius=radius,
                        bandwidth=bandwidth_colour[i]))
