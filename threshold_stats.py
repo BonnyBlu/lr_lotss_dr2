@@ -159,7 +159,7 @@ summary_entry = {
 ## Write back to the original YAML file
 ##################################
 
-summary_path = input_path.parent / "average_stats.yml"
+summary_path = input_path.parent / "average_thresholds.yml"
 
 # Load existing summary (if any)
 try:
