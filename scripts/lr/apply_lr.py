@@ -505,7 +505,7 @@ def ml(i):
 
 print("Run LR")
 
-res = parallel_process(idx_lofar_unique, ml, n_jobs=1)
+res = parallel_process(idx_lofar_unique, ml, n_jobs=n_cpus)
 
 # Prepare output arrays
 lofar["lr"] = np.nan
