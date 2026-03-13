@@ -555,7 +555,7 @@ n_iter = 10
 
 rads = list(range(1,26))
 
-Q0_r = None # 0.6983157523356884
+Q0_r = lr_inputs['q0_r']   # Either None and runs through the loop to calculate or float value from the completeness and reliability, has to be added manually to the input file 
 
 if debug == True:
     print('Starting Q0')

@@ -17,7 +17,8 @@ lr_inputs:
     apply_calc: True                                                                                            # Determines if the apply_lr.py script runs
     max_major: 15                                                                                               # maximum radius
     radius: 15                                                                                                  # search radius of the likelihood ratio
-    colour_limits_post: [0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0]                   # boundaries of colour bins
+    colour_limits_post: [0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.5, 4]           # boundaries of colour bins
+    q0_r: None                                                                                                  # threshold of Q0_r (None or float) float from completeness and reliabilty calculation must match for radio or gaussian
     params_name: 'params_'                                                                                      # params save file
     opt_nn_in: 'optical_nn_'                                                                                    # optical input catalogue
     rad_in: 'radio_'                                                                                            # radio input catalogue
