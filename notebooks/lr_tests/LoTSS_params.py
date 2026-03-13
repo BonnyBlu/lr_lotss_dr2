@@ -941,7 +941,7 @@ if debug == True:
     print('running parallel processing on ml function')
 
 #res = Parallel(n_jobs=n_cpus)(delayed(ml)(i) for i in tqdm_notebook(idx_lofar_unique))
-res = parallel_process(idx_lofar_unique, ml, n_jobs=1)
+res = parallel_process(idx_lofar_unique, ml, n_jobs=n_cpus)
 
 (lofar["lr_index_r"][idx_lofar_unique], 
  lofar["lr_dist_r"][idx_lofar_unique], 
@@ -1154,7 +1154,7 @@ def ml_w1(i):
 if debug == True:
     print("Running parallel process on res_w1")
 
-res_w1 = parallel_process(idx_lofar_unique_w1, ml_w1, n_jobs=1)
+res_w1 = parallel_process(idx_lofar_unique_w1, ml_w1, n_jobs=n_cpus)
 #res = Parallel(n_jobs=n_cpus)(delayed(ml_w1)(i) for i in tqdm_notebook(idx_lofar_unique))
 
 indices_w1 = np.arange(len(lofar))[subsample_w1][idx_lofar_unique_w1]
@@ -1366,7 +1366,7 @@ def ml_w2(i):
     ]
     return result
 
-res_w2 = parallel_process(idx_lofar_unique_w2, ml_w2, n_jobs=1)
+res_w2 = parallel_process(idx_lofar_unique_w2, ml_w2, n_jobs=n_cpus)
  
 #res = Parallel(n_jobs=n_cpus)(delayed(ml_w2)(i) for i in tqdm_notebook(idx_lofar_unique))
 
@@ -1881,7 +1881,7 @@ def ml(i):
 if debug == True:
     print('running the parallel process on the ml function')
 
-res = parallel_process(idx_lofar_unique, ml, n_jobs=1)
+res = parallel_process(idx_lofar_unique, ml, n_jobs=n_cpus)
 #res = Parallel(n_jobs=n_cpus)(delayed(ml)(i) for i in tqdm_notebook(idx_lofar_unique))
 
 lofar["lr_index_2"] = np.nan
@@ -2081,7 +2081,7 @@ for j in range(10):
         return apply_ml(i, likelihood_ratio)
     ## Run the ML
     print('starting parallel process')
-    res = parallel_process(idx_lofar_unique, ml, n_jobs=1)
+    res = parallel_process(idx_lofar_unique, ml, n_jobs=n_cpus)
     #res = Parallel(n_jobs=n_cpus)(delayed(ml)(i) for i in tqdm_notebook(idx_lofar_unique))
     lofar["lr_index_{}".format(iteration)] = np.nan
     lofar["lr_dist_{}".format(iteration)] = np.nan
