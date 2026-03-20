@@ -355,6 +355,26 @@ def get_q_m(magnitude, bin_list, n, n_m, area, radius=5):
     return real_m_cumsum / real_m_cumsum[-1]
 
 
+# def get_q_m_kde(magnitude, bin_centre, radius=5, bandwidth=0.2):
+#     """Compute q(m)
+#     Normalized probability of a real match in a 
+#     non-cumulative fashion using a KDE.
+#     For this function we need the centre of the bins instead 
+#     of the edges.
+#     **Note that the output is non-cumulative**
+#     """
+#     # Get real(m)
+#     kde_skl = KernelDensity(bandwidth=bandwidth)
+#     kde_skl.fit(magnitude[:, np.newaxis])
+#     pdf_q_m = np.exp(kde_skl.score_samples(bin_centre[:, np.newaxis]))
+#     real_m = pdf_q_m * len(magnitude) / np.sum(pdf_q_m)
+#     # Correct probability if there are no sources
+#     if len(magnitude) == 0:
+#         real_m = np.ones_like(n_hist_total) * 0.5
+#     # Remove small negative numbers
+#     real_m[real_m <= 0.0] = 0.0
+#     return real_m / np.sum(real_m)
+
 def get_q_m_kde(magnitude, bin_centre, radius=5, bandwidth=0.2):
     """Compute q(m)
     Normalized probability of a real match in a 
@@ -363,17 +383,31 @@ def get_q_m_kde(magnitude, bin_centre, radius=5, bandwidth=0.2):
     of the edges.
     **Note that the output is non-cumulative**
     """
-    # Get real(m)
+    # Checks they are arrays (in case)
+    magnitude = np.asarray(magnitude)
+    bin_centre = np.asarray(bin_centre)
+
+    # No data in this category -> no KDE to prevent crashing code when threshold from comp and reli used also Euclid not got much W2 only data
+    if len(magnitude) == 0:
+        return np.zeros_like(bin_centre, dtype=float)
+
     kde_skl = KernelDensity(bandwidth=bandwidth)
     kde_skl.fit(magnitude[:, np.newaxis])
     pdf_q_m = np.exp(kde_skl.score_samples(bin_centre[:, np.newaxis]))
-    real_m = pdf_q_m * len(magnitude) / np.sum(pdf_q_m)
-    # Correct probability if there are no sources
-    if len(magnitude) == 0:
-        real_m = np.ones_like(n_hist_total) * 0.5
-    # Remove small negative numbers
+
+    # Incase they are zero from before
+    pdf_sum = np.sum(pdf_q_m)
+    if pdf_sum == 0:
+        return np.zeros_like(bin_centre, dtype=float)
+
+    real_m = pdf_q_m * len(magnitude) / pdf_sum
     real_m[real_m <= 0.0] = 0.0
-    return real_m / np.sum(real_m)
+
+    total = np.sum(real_m)
+    if total == 0:
+        return np.zeros_like(bin_centre, dtype=float)
+
+    return real_m / total
 
 
 def estimate_q_m(magnitude, bin_list, n_m, coords_small, coords_big, radius=5):
