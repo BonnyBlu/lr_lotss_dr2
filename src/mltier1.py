@@ -324,6 +324,19 @@ def get_n_m(magnitude, bin_list, area):
     return np.cumsum(n_hist) / area
 
 
+# def get_n_m_kde(magnitude, bin_centre, area, bandwidth=0.2):
+#     """Compute n(m)
+#     Density of sources per unit of area in a non-cumulative
+#     fashion using a KDE.
+#     For this function we need the centre of the bins instead 
+#     of the edges.
+#     **Note that the output is non-cumulative**
+#     """
+#     kde_skl = KernelDensity(bandwidth=bandwidth)
+#     kde_skl.fit(magnitude[:, np.newaxis])
+#     pdf = np.exp(kde_skl.score_samples(bin_centre[:, np.newaxis]))
+#     return pdf / area * len(magnitude) / np.sum(pdf)
+
 def get_n_m_kde(magnitude, bin_centre, area, bandwidth=0.2):
     """Compute n(m)
     Density of sources per unit of area in a non-cumulative
@@ -332,10 +345,24 @@ def get_n_m_kde(magnitude, bin_centre, area, bandwidth=0.2):
     of the edges.
     **Note that the output is non-cumulative**
     """
+    # Checks they are arrays (in case)
+    magnitude = np.asarray(magnitude)
+    bin_centre = np.asarray(bin_centre)
+
+    # No data in this category -> no KDE to prevent crashing code when threshold from comp and reli used also Euclid not got much W2 only data
+    if len(magnitude) == 0:
+        return np.zeros_like(bin_centre, dtype=float)
+
     kde_skl = KernelDensity(bandwidth=bandwidth)
     kde_skl.fit(magnitude[:, np.newaxis])
     pdf = np.exp(kde_skl.score_samples(bin_centre[:, np.newaxis]))
-    return pdf / area * len(magnitude) / np.sum(pdf)
+
+    # Incase they are zero from before return zeros
+    pdf_sum = np.sum(pdf)
+    if pdf_sum == 0:
+        return np.zeros_like(bin_centre, dtype=float)
+
+    return pdf / area * len(magnitude) / pdf_sum
 
 
 def get_q_m(magnitude, bin_list, n, n_m, area, radius=5):
@@ -395,7 +422,7 @@ def get_q_m_kde(magnitude, bin_centre, radius=5, bandwidth=0.2):
     kde_skl.fit(magnitude[:, np.newaxis])
     pdf_q_m = np.exp(kde_skl.score_samples(bin_centre[:, np.newaxis]))
 
-    # Incase they are zero from before
+    # Incase they are zero from before return zeros
     pdf_sum = np.sum(pdf_q_m)
     if pdf_sum == 0:
         return np.zeros_like(bin_centre, dtype=float)
@@ -570,13 +597,26 @@ class MultiMLEstimator(object):
         """
         return np.vectorize(self.get_nm)(m, k)
 
+    # def __call__(self, m, r, sigma_0_0, det_sigma, k):
+    #     """Get the likelihood ratio"""
+    #     return (
+    #         fr_u(r, sigma_0_0, det_sigma)
+    #         * self.get_qm_vect(m, k)
+    #         / self.get_nm_vect(m, k)
+    #     )
+
     def __call__(self, m, r, sigma_0_0, det_sigma, k):
         """Get the likelihood ratio"""
-        return (
-            fr_u(r, sigma_0_0, det_sigma)
-            * self.get_qm_vect(m, k)
-            / self.get_nm_vect(m, k)
-        )
+        # Changed to deal with zero entries in the KDEs
+        f = fr_u(r, sigma_0_0, det_sigma) # get the fr function
+        qm = self.get_qm_vect(m, k) # get the qm function
+        nm = self.get_nm_vect(m, k) # get the nm function
+
+        lr = np.zeros_like(qm, dtype=float) # create a zero for all lrs along the qm -> therefore all LRs will be at least zero
+        valid = nm > 0 # only take values of nm which are greater than 0 i.e. positive (they shouldn't be negative, and it removes the zeros)
+        lr[valid] = f[valid] * qm[valid] / nm[valid] # replaces the zeros for those values where nm is positive and leave zero where it is either negative or zero
+
+        return lr # return all LRs
 
 
 class MultiMLEstimatorOld(object):
