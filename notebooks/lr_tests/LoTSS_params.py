@@ -35,6 +35,132 @@ os.chdir(dir)                                   # Move to working/data directory
 REGION = sys.argv[2]                            # Assign the hp region as an input
 config_path = os.path.join(dir, 'config')
 
+def ml(i):
+    idx_0 = idx_i[idx_lofar == i]
+    d2d_0 = d2d[idx_lofar == i]
+
+    # Magnitudes (may be MaskedArray/MaskedColumn) deals with filtering out the masked values
+    mag = catalogue_r[VIS_col][idx_0]
+    mag_arr = np.asarray(mag)
+
+    mag_ok = np.isfinite(mag_arr)
+    if hasattr(mag, "mask"):
+        mag_ok &= ~np.asarray(mag.mask)
+
+    # If nothing usable, return "no match"
+    if not np.any(mag_ok):
+        return [np.nan, np.nan, 0.0]
+
+    # Keep everything aligned
+    idx_0 = idx_0[mag_ok]
+    d2d_0 = d2d_0[mag_ok]
+    mag_arr = mag_arr[mag_ok].astype(float)
+
+    lofar_ra = lofar[i][RA_rad]
+    lofar_dec = lofar[i][DEC_rad]
+    lofar_pa = lofar[i][PA_rad]
+    lofar_maj_err = lofar[i][E_Maj_rad]
+    lofar_min_err = lofar[i][E_Min_rad]
+
+    c_ra = catalogue_r[RA_opt][idx_0]
+    c_dec = catalogue_r[DEC_opt][idx_0]
+    c_ra_err = np.ones_like(c_ra) * 0.6/3600.
+    c_dec_err = np.ones_like(c_ra) * 0.6/3600.
+
+    sigma_0_0, det_sigma = get_sigma_all(
+        lofar_maj_err, lofar_min_err, lofar_pa,
+        lofar_ra, lofar_dec,
+        c_ra, c_dec, c_ra_err, c_dec_err
+    )
+
+    lr_0 = likelihood_ratio_r(mag_arr, d2d_0.arcsec, sigma_0_0, det_sigma)
+
+    chosen_index = np.argmax(lr_0)
+
+    # IMPORTANT: idx_0 is now filtered, so this index is still correct
+    result = [
+        combined_aux_index[combined_legacy][idx_0[chosen_index]],
+        (d2d_0.arcsec)[chosen_index],
+        lr_0[chosen_index],
+    ]
+    return result
+
+def apply_ml(i, likelihood_ratio_function):
+    idx_0 = idx_i[idx_lofar == i]
+    d2d_0 = d2d[idx_lofar == i]
+
+    category = catalogue["category"][idx_0].astype(int)
+
+    # Build mag array by category filters out the masked values
+    mag = catalogue[VIS_col][idx_0]
+    mag = np.asarray(mag)  # detach from masked column semantics
+
+    # Substitute per category
+    m_w2 = catalogue[NIR_col2][idx_0]
+    m_w1 = catalogue[NIR_col1][idx_0]
+
+    # Convert those too
+    m_w2_arr = np.asarray(m_w2)
+    m_w1_arr = np.asarray(m_w1)
+
+    mag[category == 0] = m_w2_arr[category == 0]
+    mag[category == 1] = m_w1_arr[category == 1]
+
+    # ---- NEW: filter invalid magnitudes (and keep arrays aligned) ----
+    mag_ok = np.isfinite(mag)
+
+    # If any of the source columns were masked, also enforce their masks
+    # (only where that band is being used)
+    if hasattr(m_w2, "mask"):
+        mag_ok[category == 0] &= ~np.asarray(m_w2.mask)[category == 0]
+    if hasattr(m_w1, "mask"):
+        mag_ok[category == 1] &= ~np.asarray(m_w1.mask)[category == 1]
+    m_vis = catalogue[VIS_col][idx_0]
+    if hasattr(m_vis, "mask"):
+        mag_ok[category >= 2] &= ~np.asarray(m_vis.mask)[category >= 2]
+
+    if not np.any(mag_ok):
+        return [np.nan, np.nan, 0.0]
+
+    # Apply the mask consistently
+    idx_0 = idx_0[mag_ok]
+    d2d_0 = d2d_0[mag_ok]
+    category = category[mag_ok]
+    mag = mag[mag_ok].astype(float)
+
+    lofar_ra = lofar[i][RA_rad]
+    lofar_dec = lofar[i][DEC_rad]
+    lofar_pa = lofar[i][PA_rad]
+    lofar_maj_err = lofar[i][E_Maj_rad]
+    lofar_min_err = lofar[i][E_Min_rad]
+
+    c_ra = catalogue[RA_opt][idx_0]
+    c_dec = catalogue[DEC_opt][idx_0]
+    c_ra_err = np.ones_like(c_ra) * 0.6/3600.
+    c_dec_err = np.ones_like(c_ra) * 0.6/3600.
+
+    sigma_0_0, det_sigma = get_sigma_all(
+        lofar_maj_err, lofar_min_err, lofar_pa,
+        lofar_ra, lofar_dec,
+        c_ra, c_dec, c_ra_err, c_dec_err
+    )
+
+    lr_0 = likelihood_ratio_function(mag, d2d_0.arcsec, sigma_0_0, det_sigma, category)
+
+    chosen_index = np.argmax(lr_0)
+    result = [
+        combined_aux_index[selection][idx_0[chosen_index]],
+        (d2d_0.arcsec)[chosen_index],
+        lr_0[chosen_index],
+    ]
+    return result
+
+class LRapply(object):
+    def __init__(self,Q_0_color, n_m, q_m, centers):
+        self.likelihood_ratio=MultiMLEstimator(Q_0_colour, n_m, q_m, centers)
+    def ml(self,i):
+        return apply_ml(i, self.likelihood_ratio)
+
 try:
     BASEPATH = os.path.dirname(os.path.realpath(__file__))
     ROOTPATH = os.path.join(BASEPATH, "..", "..")
@@ -46,7 +172,7 @@ except NameError as e:
         BASEPATH = os.getcwd()
         ROOTPATH = os.path.join(BASEPATH, "..", "..")
 
-data_path = os.path.join(ROOTPATH, "data")
+data_path = os.path.join(dir, "data")
 src_path = os.path.join(ROOTPATH, "src")
 #config_path = os.path.join(ROOTPATH, "config")
 out_path = os.path.join(data_path, "outputs")
@@ -812,7 +938,7 @@ likelihood_ratio_r = SingleMLEstimator(Q0_r, n_m_r, q_m_r, center_r)
 
 import multiprocessing
 
-n_cpus_total = multiprocessing.cpu_count()
+n_cpus_total = len(os.sched_getaffinity(0))
 
 n_cpus = max(1, n_cpus_total-1)
 
@@ -882,57 +1008,6 @@ if debug == True:
 ##############################
 
 ## New fuction for masked catalogues ##
-
-def ml(i):
-    idx_0 = idx_i[idx_lofar == i]
-    d2d_0 = d2d[idx_lofar == i]
-
-    # Magnitudes (may be MaskedArray/MaskedColumn) deals with filtering out the masked values
-    mag = catalogue_r[VIS_col][idx_0]
-    mag_arr = np.asarray(mag)
-
-    mag_ok = np.isfinite(mag_arr)
-    if hasattr(mag, "mask"):
-        mag_ok &= ~np.asarray(mag.mask)
-
-    # If nothing usable, return "no match"
-    if not np.any(mag_ok):
-        return [np.nan, np.nan, 0.0]
-
-    # Keep everything aligned
-    idx_0 = idx_0[mag_ok]
-    d2d_0 = d2d_0[mag_ok]
-    mag_arr = mag_arr[mag_ok].astype(float)
-
-    lofar_ra = lofar[i][RA_rad]
-    lofar_dec = lofar[i][DEC_rad]
-    lofar_pa = lofar[i][PA_rad]
-    lofar_maj_err = lofar[i][E_Maj_rad]
-    lofar_min_err = lofar[i][E_Min_rad]
-
-    c_ra = catalogue_r[RA_opt][idx_0]
-    c_dec = catalogue_r[DEC_opt][idx_0]
-    c_ra_err = np.ones_like(c_ra) * 0.6/3600.
-    c_dec_err = np.ones_like(c_ra) * 0.6/3600.
-
-    sigma_0_0, det_sigma = get_sigma_all(
-        lofar_maj_err, lofar_min_err, lofar_pa,
-        lofar_ra, lofar_dec,
-        c_ra, c_dec, c_ra_err, c_dec_err
-    )
-
-    lr_0 = likelihood_ratio_r(mag_arr, d2d_0.arcsec, sigma_0_0, det_sigma)
-
-    chosen_index = np.argmax(lr_0)
-
-    # IMPORTANT: idx_0 is now filtered, so this index is still correct
-    result = [
-        combined_aux_index[combined_legacy][idx_0[chosen_index]],
-        (d2d_0.arcsec)[chosen_index],
-        lr_0[chosen_index],
-    ]
-    return result
-
 
 #from joblib import Parallel, delayed
 #from tqdm import tqdm, tqdm_notebook
@@ -1366,6 +1441,8 @@ def ml_w2(i):
     ]
     return result
 
+if debug == True:
+    print("Running parallel process on res_w2")
 res_w2 = parallel_process(idx_lofar_unique_w2, ml_w2, n_jobs=n_cpus)
  
 #res = Parallel(n_jobs=n_cpus)(delayed(ml_w2)(i) for i in tqdm_notebook(idx_lofar_unique))
@@ -1386,8 +1463,8 @@ except ValueError:
     if log_out == True:
         log_outputs(REGION, "ValueError", details = "Threshold of w2 is out of range")
         raise SystemExit("Threshold of w2 is out of range of 0 - 100; logging and exiting this run")
-    
-threshold_w2 # 0.015 before
+
+#threshold_w2=0.015 #  before
 
 if debug == True:
     print('threshold w2', threshold_w2)
@@ -1791,76 +1868,6 @@ if debug == True:
 
 ## New code for masled catalogues ##
 
-def apply_ml(i, likelihood_ratio_function):
-    idx_0 = idx_i[idx_lofar == i]
-    d2d_0 = d2d[idx_lofar == i]
-
-    category = catalogue["category"][idx_0].astype(int)
-
-    # Build mag array by category filters out the masked values
-    mag = catalogue[VIS_col][idx_0]
-    mag = np.asarray(mag)  # detach from masked column semantics
-
-    # Substitute per category
-    m_w2 = catalogue[NIR_col2][idx_0]
-    m_w1 = catalogue[NIR_col1][idx_0]
-
-    # Convert those too
-    m_w2_arr = np.asarray(m_w2)
-    m_w1_arr = np.asarray(m_w1)
-
-    mag[category == 0] = m_w2_arr[category == 0]
-    mag[category == 1] = m_w1_arr[category == 1]
-
-    # ---- NEW: filter invalid magnitudes (and keep arrays aligned) ----
-    mag_ok = np.isfinite(mag)
-
-    # If any of the source columns were masked, also enforce their masks
-    # (only where that band is being used)
-    if hasattr(m_w2, "mask"):
-        mag_ok[category == 0] &= ~np.asarray(m_w2.mask)[category == 0]
-    if hasattr(m_w1, "mask"):
-        mag_ok[category == 1] &= ~np.asarray(m_w1.mask)[category == 1]
-    m_vis = catalogue[VIS_col][idx_0]
-    if hasattr(m_vis, "mask"):
-        mag_ok[category >= 2] &= ~np.asarray(m_vis.mask)[category >= 2]
-
-    if not np.any(mag_ok):
-        return [np.nan, np.nan, 0.0]
-
-    # Apply the mask consistently
-    idx_0 = idx_0[mag_ok]
-    d2d_0 = d2d_0[mag_ok]
-    category = category[mag_ok]
-    mag = mag[mag_ok].astype(float)
-
-    lofar_ra = lofar[i][RA_rad]
-    lofar_dec = lofar[i][DEC_rad]
-    lofar_pa = lofar[i][PA_rad]
-    lofar_maj_err = lofar[i][E_Maj_rad]
-    lofar_min_err = lofar[i][E_Min_rad]
-
-    c_ra = catalogue[RA_opt][idx_0]
-    c_dec = catalogue[DEC_opt][idx_0]
-    c_ra_err = np.ones_like(c_ra) * 0.6/3600.
-    c_dec_err = np.ones_like(c_ra) * 0.6/3600.
-
-    sigma_0_0, det_sigma = get_sigma_all(
-        lofar_maj_err, lofar_min_err, lofar_pa,
-        lofar_ra, lofar_dec,
-        c_ra, c_dec, c_ra_err, c_dec_err
-    )
-
-    lr_0 = likelihood_ratio_function(mag, d2d_0.arcsec, sigma_0_0, det_sigma, category)
-
-    chosen_index = np.argmax(lr_0)
-    result = [
-        combined_aux_index[selection][idx_0[chosen_index]],
-        (d2d_0.arcsec)[chosen_index],
-        lr_0[chosen_index],
-    ]
-    return result
-
 
 ### Run the cross-match ###
 
@@ -1873,15 +1880,12 @@ idx_lofar_unique = np.unique(idx_lofar)
 
 # Run the ML matching
 
-likelihood_ratio = MultiMLEstimator(Q_0_colour, n_m, q_m, centers)
-
-def ml(i):
-    return apply_ml(i, likelihood_ratio)
+lra=LRapply(Q_0_colour, n_m, q_m, centers)
 
 if debug == True:
     print('running the parallel process on the ml function')
 
-res = parallel_process(idx_lofar_unique, ml, n_jobs=n_cpus)
+res = parallel_process(idx_lofar_unique, lra.ml, n_jobs=n_cpus)
 #res = Parallel(n_jobs=n_cpus)(delayed(ml)(i) for i in tqdm_notebook(idx_lofar_unique))
 
 lofar["lr_index_2"] = np.nan
@@ -2076,12 +2080,12 @@ for j in range(10):
         plt.savefig('{}/q_over_n_nice_{}.png'.format(idp, iteration))
         del fig
     ## Define new likelihood_ratio
-    likelihood_ratio = MultiMLEstimator(Q_0_colour, n_m, q_m, centers)
-    def ml(i):
-        return apply_ml(i, likelihood_ratio)
+    ## This uses the LRapply class which defines a function that applies the new LR function
+    lra=LRapply(Q_0_colour, n_m, q_m, centers)
+    
     ## Run the ML
     print('starting parallel process')
-    res = parallel_process(idx_lofar_unique, ml, n_jobs=n_cpus)
+    res = parallel_process(idx_lofar_unique, lra.ml, n_jobs=n_cpus)
     #res = Parallel(n_jobs=n_cpus)(delayed(ml)(i) for i in tqdm_notebook(idx_lofar_unique))
     lofar["lr_index_{}".format(iteration)] = np.nan
     lofar["lr_dist_{}".format(iteration)] = np.nan
