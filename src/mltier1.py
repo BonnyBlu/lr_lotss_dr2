@@ -723,6 +723,9 @@ def parallel_process(
         front = [
             function(**a) if use_kwargs else function(a) for a in array[:front_num]
         ]
+    else:
+        # YOLO
+        front=[]
     # If we set n_jobs to 1, just run a list comprehension. This is useful for benchmarking and debugging.
     if n_jobs == 1:
         return front + [
