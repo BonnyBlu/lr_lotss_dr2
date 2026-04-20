@@ -127,7 +127,7 @@ if [ "$THRES_CALC" = "True" ]; then
 
         echo "Submitting job for directory: ${REGION}"
     
-        job_id=$(sbatch lr_params_run.sh "${WORKING_DIR}" "${REGION}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches LRSingularity and stores the job_id in the array
+        job_id=$(sbatch -p core96 lr_params_run.sh "${WORKING_DIR}" "${REGION}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches LRSingularity and stores the job_id in the array
             
         job_ids+=("${job_id}")
 
@@ -151,34 +151,31 @@ if [ "$THRES_CALC" = "True" ]; then
         for job_id in "${job_ids[@]}"; do
             echo "Setting status for job ${job_id}"
 
-            # Extract the primary status for the job from sacct output
-            status=$(echo "$sacct_output" | awk -v id="$job_id" '
-                $1 ~ "^"id"($|[.])" && $2 !~ /COMPLETED|^--*$/ {
-                    gsub(/^[[:space:]]+/, "", $2); print $2; exit
-                }'
-            )
+            status=$(sacct -X -n -P -j "${job_id}" -o State | head -n 1 | cut -d'|' -f1)
+            status=${status%%+*}   # strip any trailing +
 
             if [[ -z "${status}" ]]; then
-                echo "Job ${job_id} has no status information (likely completed or purged). Assuming completed." >> "${LOG_FILE}"
+                echo "Job ${job_id} has no status information from sacct. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
+                ((active_jobs++))
                 continue
             fi
 
             echo "Checking status of ${job_id}: ${status}"
+
             case "${status}" in
-                RUNNING|PENDING)
-                    echo "Job is running normally. Status is not recorded in log file."                                
+                COMPLETED)
+                    echo "Job ${job_id} completed successfully."
+                    ;;
+                RUNNING|PENDING|CONFIGURING|COMPLETING|STAGE_OUT)
+                    echo "Job ${job_id} is still active with status: ${status}"
                     ((active_jobs++))
                     ;;
-                FAILED|CANCELLED|TIMEOUT|NODE_FAIL|REVOKED)
+                SUSPENDED|PREEMPTED|STOPPED)
+                    echo "Job ${job_id} is in a temporary state: ${status}. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
+                    ((active_jobs++))
+                    ;;
+                FAILED|CANCELLED|TIMEOUT|NODE_FAIL|REVOKED|BOOT_FAIL|DEADLINE|OUT_OF_MEMORY)
                     echo "Job ${job_id} ended abnormally with status: ${status}. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
-                    ;;
-                CONFIGURING|COMPLETING)
-                    echo "Job will complete shortly. Status is: ${status}"
-                    ((active_jobs++))
-                    ;;
-                SUSPENDED|PREEMPTED)
-                    echo "Job ${job_id} is in a temporary state: ${status}. Manual check might be needed. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
-                    ((active_jobs++))
                     ;;
                 *)
                     echo "Job ${job_id} has an unexpected status: ${status}. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
@@ -261,7 +258,7 @@ if [ "$APPLY_CALC" = "True" ]; then
 
         echo "Submitting job for directory: ${REGION}"
     
-        job_id=$(sbatch apply_lr_run.sh "${WORKING_DIR}" "${REGION}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches LRSingularity and stores the job_id in the array
+        job_id=$(sbatch -p core96 apply_lr_run.sh "${WORKING_DIR}" "${REGION}" "${SINGULARITY_PATH}"| awk '{print $4}') ##  This batches LRSingularity and stores the job_id in the array
             
         job_ids+=("${job_id}")
 
@@ -285,35 +282,31 @@ if [ "$APPLY_CALC" = "True" ]; then
         for job_id in "${job_ids[@]}"; do
             echo "Setting status for job ${job_id}"
 
-            # Extract the primary status for the job from sacct output
-            status=$(echo "$sacct_output" | awk -v id="$job_id" '
-                $1 ~ "^"id"($|[.])" && $2 !~ /COMPLETED|^--*$/ {
-                    gsub(/^[[:space:]]+/, "", $2); print $2; exit
-                }'
-            )
+            status=$(sacct -X -n -P -j "${job_id}" -o State | head -n 1 | cut -d'|' -f1)
+            status=${status%%+*}   # strip any trailing +
 
             if [[ -z "${status}" ]]; then
-                echo "Job ${job_id} has no status information (likely completed or purged). Assuming completed." >> "${LOG_FILE}"
+                echo "Job ${job_id} has no status information from sacct. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
+                ((active_jobs++))
                 continue
             fi
 
             echo "Checking status of ${job_id}: ${status}"
 
             case "${status}" in
-                RUNNING|PENDING)
-                    echo "Job is running normally. Status is not recorded in log file."                                
+                COMPLETED)
+                    echo "Job ${job_id} completed successfully."
+                    ;;
+                RUNNING|PENDING|CONFIGURING|COMPLETING|STAGE_OUT)
+                    echo "Job ${job_id} is still active with status: ${status}"
                     ((active_jobs++))
                     ;;
-                FAILED|CANCELLED|TIMEOUT|NODE_FAIL|REVOKED)
+                SUSPENDED|PREEMPTED|STOPPED)
+                    echo "Job ${job_id} is in a temporary state: ${status}. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
+                    ((active_jobs++))
+                    ;;
+                FAILED|CANCELLED|TIMEOUT|NODE_FAIL|REVOKED|BOOT_FAIL|DEADLINE|OUT_OF_MEMORY)
                     echo "Job ${job_id} ended abnormally with status: ${status}. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
-                    ;;
-                CONFIGURING|COMPLETING)
-                    echo "Job will complete shortly. Status is: ${status}"
-                    ((active_jobs++))
-                    ;;
-                SUSPENDED|PREEMPTED)
-                    echo "Job ${job_id} is in a temporary state: ${status}. Manual check might be needed. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
-                    ((active_jobs++))
                     ;;
                 *)
                     echo "Job ${job_id} has an unexpected status: ${status}. Recorded in log file ${LOG_FILE}" >> "${LOG_FILE}"
