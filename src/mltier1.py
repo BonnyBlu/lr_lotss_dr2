@@ -6,7 +6,8 @@ from astropy.coordinates import SkyCoord, search_around_sky
 from tqdm import tqdm, tnrange, tqdm_notebook
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from sklearn.neighbors import KernelDensity
-
+import multiprocessing as mp
+import queue
 
 ## general functions
 def describe(var, decimals=3, nullvalue=-999):
@@ -696,7 +697,7 @@ def get_threshold(lr_dist, n_bins=200, n_gal_cut=1000):
 
 
 ## Multiprocessing functions
-def parallel_process(
+def parallel_process_old(
     array, function, n_jobs=3, use_kwargs=False, front_num=3, notebook=False
 ):
     """
@@ -753,3 +754,35 @@ def parallel_process(
     for i, future in enumerate(tqdm_f(futures)):
         out.append(future.result())
     return front + out
+
+def worker(q_in,q_out,function):
+    # This is the worker process. It reads values from the input
+    # queue, does the work, and places the results on the output queue
+    while True:
+        try:
+            i,value=q_in.get(block=True,timeout=5)
+        except queue.Empty:
+            break
+        result=function(value)
+        q_out.put((i,result))
+
+def parallel_process(array, function, n_jobs=3):
+    # This is the parent process. It places values on the input queue and reads them from the output queue
+    # Implementing the missing functionality from the old function is left as an exercise for the reader
+    q_in=mp.Queue()
+    q_out=mp.Queue()
+    print('Initializing queue')
+    for i,value in enumerate(array):
+        q_in.put((i,value))
+    print('Starting',n_jobs,'workers')
+    for i in range(n_jobs):
+        p=mp.Process(target=worker,args=(q_in,q_out,function))
+        p.start()
+    print('Waiting for output')
+    result=[]
+    for i in tqdm(range(len(array))):
+        result.append(q_out.get())
+    print('Unscrambling')
+    result=[b for a,b in sorted(result)]
+    return result
+
